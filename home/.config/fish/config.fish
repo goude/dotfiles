@@ -1,5 +1,4 @@
 set -x HOMESHICK_REPOS $HOME/.homesick/repos
-source $HOMESHICK_REPOS/runcom2/localenv
 
 if status --is-interactive
     fish_vi_key_bindings
@@ -12,7 +11,6 @@ if status --is-interactive
     source $HOMESHICK_REPOS/homeshick/completions/homeshick.fish
 
     source $RUNCOM2_PATH/aliases
-    source $RUNCOM2_PATH/aliases-linux
 
     afs_stuff
     load_em
