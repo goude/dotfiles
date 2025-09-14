@@ -1,0 +1,26 @@
+#!/bin/bash
+
+system=`uname -a`
+
+if [[ "$system" =~ "Linux" ]]; then
+    printf 'Linux'
+    exit 0
+fi
+
+if [[ $system =~ "Darwin" ]]; then
+    printf 'OSX'
+    exit 0
+fi
+
+if [[ $system =~ "CYGWIN_NT-" ]]; then
+    printf 'Cygwin'
+    exit 0
+fi
+
+if [[ $system =~ "MINGW64" ]]; then
+    printf 'GitBash'
+    exit 0
+fi
+
+printf 'Unknown system' >&2
+exit 1

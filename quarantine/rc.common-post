@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+
+# OS specific settings
+if [[ $system == 'Linux' ]]; then
+  alias ls='ls -hpF --color=auto'
+  alias rm='rm -I'
+  alias grep='grep --color=auto'
+  alias egrep='egrep --color=auto'
+  alias open='xdg-open'
+
+  if [[ -n "$DISPLAY" ]]; then
+      # Map caps lock key to ctrl / set eurkey keymap
+      setxkbmap eu -option ctrl:nocaps
+  fi
+fi
+
+if [[ $system == 'OSX' ]]; then
+  export CLICOLOR=1
+
+  if [[ -x /usr/local/bin/gls ]]; then
+      alias ls='/usr/local/bin/gls -hpF --color=auto'
+  else
+      alias ls='ls -hG'
+  fi
+fi
+
+# Directory colors
+if [[ -f ~/.dircolors && ( -x /usr/local/bin/dircolors || -x /usr/bin/dircolors ) ]]; then
+  eval `dircolors $HOME/.dircolors`
+fi
+if [[ -f ~/.dircolors && ( -x /usr/local/bin/gdircolors ) ]]; then
+  eval `gdircolors $HOME/.dircolors`
+fi
+
+# Source custom functions, including `command_exists` which is used below.
+. "$rcfiles/functions"
+
+# Replacement commands
+# Use bat if available
+#command_exists bat && alias cat='bat'
+if command_exists bat; then
+  alias cat='bat'
+  export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+fi
+
+# Use exa if available
+#if [[ -f ~/.cargo/bin/exa ]]; then
+if command_exists exa; then
+  alias ls='exa --color-scale'
+  alias l='ls --all'
+  alias ll='ls --all --long --header --git'
+  alias lt='ls --all --long --tree'
+else
+  alias l='ls -A --color'
+  alias ll='ls -lAh --color'
+  alias lt='tree'
+  alias lsa='ls -lAh --color'
+fi
+
+# fasd navigator
+eval "$(fasd --init auto)"
+
+# nvm (slow loading)
+#alias nvm='[ -s "$NVM_DIR/nvm.sh" ] && unalias nvm && . "$NVM_DIR/nvm.sh" && nvm $@'
+#if [ -z ${NVM_RC_VERSION+x} ]; then #  if NVM... is not set
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" && nvm use node
+#fi
+
+# Turn off Ctrl-s XOFF, so we can use C-S mapping in vim
+# Commented out pending further investigation (x key stopped working)
+# http://unix.stackexchange.com/questions/72086/ctrl-s-hang-terminal-emulator
+#stty ixon
+stty ixany
+stty ixoff -ixon
+stty stop undef
+stty start undef
+# End magic mumbo jumbo block
+
+# Custom aliases
+. "$rcfiles/aliases"
+
+# Alias to fix typos
+if [[ -x /usr/bin/thefuck ]]; then
+  eval "$(thefuck --alias)"
+fi
+
+# Cleanup
+unset rcfiles
+unset system
+
+# Source additional local settings
+if [ -f ~/.localenv-post ]; then
+  . ~/.localenv-post
+fi
+
+# Source optional additional settings
+if [[ -f $HOMESHICK_REPOS/pruncom2/rc.pruncom-post ]]; then
+  . "$HOMESHICK_REPOS/pruncom2/rc.pruncom-post"
+fi

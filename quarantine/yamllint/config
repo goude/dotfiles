@@ -1,0 +1,5 @@
+# https://github.com/adrienverge/yamllint/blob/master/yamllint/conf/relaxed.yaml
+extends: relaxed
+
+rules:
+    line-length: enable

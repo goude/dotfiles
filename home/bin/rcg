@@ -1,0 +1,30 @@
+#!/bin/bash
+echo "Setting up default global git configuration."
+
+if [[ -f "$HOME/.gitconfig" ]]; then
+  rm "$HOME/.gitconfig"
+fi
+
+git config --global user.name 'Daniel Goude'
+git config --global user.email 'daniel@goude.se'
+git config --global push.default simple
+git config --global pull.rebase false
+
+# diffs
+git config --global diff.tool vimdiff
+git config --global merge.tool vimdiff
+#git config --global difftool.prompt false
+
+git config --global --unset http.sslVerify
+git config --global --unset http.sslCAinfo
+
+git config --global core.excludesfile ~/.gitignore
+
+# aliases
+#git config --global alias.undo-commit 'reset --soft HEAD^'
+
+# diff configuration
+#git config --global icdiff.options '--line-numbers'
+#git-nbdiffdriver config --enable --global
+
+git config --list

@@ -1,0 +1,61 @@
+#!/usr/bin/env zsh
+
+export HOMESHICK_REPOS=$HOME/.homesick/repos
+
+rcfiles=$HOMESHICK_REPOS/runcom2
+system=`$rcfiles/utils/system`
+
+# Ensure locale is set
+export LANG=en_US.UTF-8
+export LANGUAGE=en_US.UTF-8
+export LC_CTYPE=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+export EDITOR='vim'
+#export VISUAL='vim'
+#export PAGER='less'
+#export LESS='-F -g -i -M -R -S -w -X -z-4'
+
+export FORTUNE_PATH=$HOMESHICK_REPOS/adages/adages
+#export GOPATH=$HOME/go
+export NVM_DIR="$HOME/.nvm"
+
+export PIP_REQUIRE_VIRTUALENV=true
+
+#export FZF_DEFAULT_COMMAND='ag -g ""'
+
+# See https://github.com/rbong/gruvbox for colors
+export FZF_DEFAULT_OPTS='
+	--reverse --height=100% --inline-info
+	--color fg:246,bg:235,hl:124,fg+:106,bg+:237,hl+:124
+  --color info:208,prompt:108,spinner:142,pointer:166,marker:214
+'
+
+#export PATH=$PATH:$GOPATH/bin:$HOME/bin:$HOME/.fzf/bin:$HOME/.cargo/bin
+export PATH=$HOME/bin:$HOME/.local/bin:$HOME/.cargo/bin:$PATH:$HOME/.fzf/bin:
+
+# Source more environment variables
+source $rcfiles/localenv
+
+# Source local settings
+if [ -f ~/.localenv ]; then
+	. ~/.localenv
+fi
+
+# Create tmp dir
+if [[ ! -d $RUNCOM2_TMPDIR ]]; then
+	mkdir -p $RUNCOM2_TMPDIR
+fi
+
+# Source minimal vanilla settings
+if [[ -f $HOMESHICK_REPOS/getaround/getaround.sh ]]; then
+  source $HOMESHICK_REPOS/getaround/getaround.sh
+fi
+
+# Source optional additional settings
+if [[ -f $HOMESHICK_REPOS/pruncom2/rc.pruncom ]]; then
+  source $HOMESHICK_REPOS/pruncom2/rc.pruncom
+fi
+
+# Activate homeshick - git dotfile synchronizer
+source $HOMESHICK_REPOS/homeshick/homeshick.sh

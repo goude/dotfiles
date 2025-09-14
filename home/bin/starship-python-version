@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Print Python version from repo .venv if available, else system Python
+
+root=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+if [ -n "$root" ] && [ -x "$root/.venv/bin/python" ]; then
+    "$root/.venv/bin/python" -V | awk '{print $2}'
+else
+    python3 -V | awk '{print $2}'
+fi

@@ -1,0 +1,23 @@
+add_newline = false
+
+[kubernetes]
+disabled = true
+
+[python]
+disabled = true
+
+[custom.venv_python]
+command = 'starship-python-version'
+when = 'git rev-parse --show-toplevel >/dev/null 2>&1'
+format = "via [🐍 $output]($style) "
+style = "bold yellow"
+
+[custom.gitmail]
+command = "git config user.email"
+when = "git status"
+
+[custom.disk_space]
+command = "df -h /System/Volumes/Data/ | awk 'NR==2 {print $5}'"
+when = "true"
+format = "💾 [$output]($style) "
+style = "bold green"

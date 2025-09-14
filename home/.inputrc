@@ -1,0 +1,43 @@
+# none, visible or audible
+set bell-style none
+
+# Ask before displaying >40 items
+# Since $WINDIR $PATH var can be in $PATH, this could list
+# all window executables in C:\WINDOWS
+set completion-query-items 40
+
+# Ignore case for the command-line-completion functionality
+# on:  default on a Windows style console
+# off: default on a *nix style console
+#set completion-ignore-case on
+
+# disable/enable 8bit input
+#set meta-flag on
+set input-meta on
+set output-meta on
+set convert-meta off
+
+# visible-stats
+# Append a mark according to the file type in a listing
+#set visible-stats off
+#set mark-directories on
+
+# Show all instead of beeping first
+set show-all-if-ambiguous off
+
+# use vi key bindings for input
+# https://blog.bugsnag.com/tmux-and-vim/
+set editing-mode vi
+set keymap vi
+
+# Use jk as escape
+#$if mode=vi
+  #set keymap vi-insert
+  #"jk": vi-movement-mode # remap escape
+#$endif
+
+# Fix Ctrl-L not clearing screen in Bash
+set keymap vi-insert
+$if Bash
+"\C-l": "\e\C-la"
+$endif
