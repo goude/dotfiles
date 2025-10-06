@@ -7,15 +7,13 @@
       apt:
         pkg:
           - bat
-          - exa
+          - eza
           - git
           - fish
           - tmux
-          - vim-nox
+          - vim
           - curl
-          - silversearcher-ag
           - fzf
-          - mgitstatus
           - python3-pip
           - python3-venv
           - libreadline-dev
@@ -23,8 +21,6 @@
           - libbz2-dev
           - libffi-dev
           - tig
-          - tldr
           - fd-find
           - ripgrep
           - duf
-          - aiksaurus

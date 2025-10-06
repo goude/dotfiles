@@ -10,7 +10,7 @@ if status --is-interactive
     source $HOMESHICK_REPOS/homeshick/homeshick.fish
     source $HOMESHICK_REPOS/homeshick/completions/homeshick.fish
 
-    source $RUNCOM2_PATH/aliases
+    source $HOMESHICK_REPOS/dotfiles/aliases
 
     afs_stuff
     load_em
