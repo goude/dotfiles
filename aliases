@@ -5,11 +5,6 @@ alias mv='mv -i'
 alias cp='cp -i'
 
 # basic aliases
-if ls --color >/dev/null 2>&1; then
-  alias ls='ls --color'
-else
-  alias ls='ls -G' 2>/dev/null || alias ls='ls'
-fi
 alias df='df -h'
 alias ..='cd ..'
 alias ...='cd ../..'
