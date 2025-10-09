@@ -1,3 +1,30 @@
+
+# protective aliases
+alias rm='rm -i'
+alias mv='mv -i'
+alias cp='cp -i'
+
+# basic aliases
+if ls --color >/dev/null 2>&1; then
+  alias ls='ls --color'
+else
+  alias ls='ls -G' 2>/dev/null || alias ls='ls'
+fi
+alias df='df -h'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ta='tmux attach || tmux new'
+alias n='nvim'
+
+# git aliases
+alias gs='git status'
+alias ga='git add'
+alias gca='git commit -a'
+alias gp='git push'
+
+# system shortcuts
+alias sau='sudo apt update && sudo apt upgrade -y'
+
 # homeshick aliases
 alias ho='homeshick'
 alias hocd='homeshick cd'
