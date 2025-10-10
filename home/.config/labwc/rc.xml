@@ -1,6 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <labwc_config xmlns="http://openbox.org/3.4/rc">
 
+  <!-- Tell LabWC where your menu is -->
+  <menu>
+    <file>~/.config/labwc/menu.xml</file>
+    <!-- optional: delay before hiding submenus (ms)
+    <hideDelay>200</hideDelay>
+    -->
+  </menu>
+
+  <!-- Bind desktop right-click to your root menu -->
+  <mouse>
+    <context name="Root">
+      <mousebind button="Right" action="Press">
+        <action name="ShowMenu">
+          <menu>root-menu</menu>
+        </action>
+      </mousebind>
+    </context>
+  </mouse>
+
   <!-- ===== THEME & DECOR ===== -->
   <theme>
     <name>PiXonyx</name>
@@ -109,7 +128,6 @@
 
     <!-- Screenshots -->
     <keybind key="Print"><action name="Execute"><command>grim "$HOME/Pictures/screenshot-$(date +%F_%H-%M-%S).png"</command></action></keybind>
-    <keybind key="Shift-Print"><action name="Execute"><command>sh -c 'slurp | xargs -I{} grim -g {} /tmp/shot.png && swappy -f /tmp/shot.png'</command></action></keybind>
 
     <!-- Quick reconfigure -->
     <keybind key="Super-Escape"><action name="Reconfigure"/></keybind>
