@@ -30,10 +30,10 @@
     <dropShadowsOnTiled>yes</dropShadowsOnTiled>
 
     <!-- Fonts -->
-    <font place="ActiveWindow"><name>Inter</name><size>12</size><weight>Medium</weight><slant>Normal</slant></font>
-    <font place="InactiveWindow"><name>Inter</name><size>12</size><weight>Light</weight><slant>Normal</slant></font>
-    <font place="MenuHeader"><name>Inter</name><size>11</size><weight>Medium</weight><slant>Normal</slant></font>
-    <font place="MenuItem"><name>Inter</name><size>11</size><weight>Regular</weight><slant>Normal</slant></font>
+    <font place="ActiveWindow"><name>Inter</name><size>10</size><weight>Medium</weight><slant>Normal</slant></font>
+    <font place="InactiveWindow"><name>Inter</name><size>10</size><weight>Light</weight><slant>Normal</slant></font>
+    <font place="MenuHeader"><name>Inter</name><size>10</size><weight>Medium</weight><slant>Normal</slant></font>
+    <font place="MenuItem"><name>Inter</name><size>10</size><weight>Regular</weight><slant>Normal</slant></font>
 
     <titlebar>
       <showTitle>yes</showTitle>
@@ -156,4 +156,3 @@
   </tablet>
 
 </labwc_config>
-
