@@ -1,0 +1,47 @@
+* {
+  font-family: Inter, "Noto Sans", sans-serif;
+  font-size: 12px;
+}
+window#waybar {
+  background: rgba(20, 20, 24, 0.75);
+  /*backdrop-filter: blur(6px);*/
+  color: #eaeaea;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+#clock,
+#cpu,
+#memory,
+#network,
+#pulseaudio,
+#bluetooth,
+#tray,
+#custom-launcher,
+#custom-pi-temp {
+  padding: 0 10px;
+  margin: 0 2px;
+  border-radius: 10px;
+}
+#custom-launcher {
+  font-weight: 700;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+#pulseaudio.muted,
+#network.disconnected {
+  color: #ffb86c;
+}
+#custom-pi-temp.ok {
+  color: #a6e3a1;
+}
+#custom-pi-temp.warm {
+  color: #f9e2af;
+}
+#custom-pi-temp.hot {
+  color: #f38ba8;
+  font-weight: 700;
+}
+tooltip {
+  background: #16161a;
+  color: #ddd;
+  border: 1px solid #2a2a2e;
+}

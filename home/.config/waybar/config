@@ -1,0 +1,54 @@
+{
+  "layer": "top",
+  "position": "bottom",
+  "height": 28,
+  "modules-left": ["custom/launcher", "cpu", "memory"],
+  "modules-center": ["clock"],
+  "modules-right": ["network", "pulseaudio", "bluetooth", "tray", "custom/pi-temp"],
+
+  "custom/launcher": {
+    "format": "  Menu",
+    "tooltip": "Applications",
+    "on-click": "~/bin/launcher",
+    "interval": 0
+  },
+
+  "cpu": { "format": "CPU {usage}%", "tooltip": true, "interval": 3 },
+
+  "memory": { "format": "RAM {used:0.1f}G", "tooltip": true, "interval": 5 },
+
+  "clock": {
+    "format": "{:%a %Y-%m-%d  %H:%M}",
+    "tooltip-format": "{:%A, %d %B %Y}"
+  },
+
+  "network": {
+    "format-wifi": "  {essid} {signalStrength}%",
+    "format-ethernet": "  {ifname}",
+    "format-disconnected": "  offline",
+    "tooltip": true
+  },
+
+  "pulseaudio": {
+    "format": "{icon} {volume}%",
+    "format-muted": "",
+    "format-icons": { "default": ["","",""] },
+    "on-click": "pavucontrol"
+  },
+
+  "bluetooth": {
+    "format": " {status}",
+    "format-connected": " {num_connections}",
+    "interval": 10
+  },
+
+  "tray": { "icon-size": 16, "spacing": 8 },
+
+  "custom/pi-temp": {
+    "exec": "~/bin/pi-temp",
+    "interval": 5,
+    "return-type": "json",
+    "tooltip": true
+  }
+}
+
