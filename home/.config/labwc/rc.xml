@@ -1,32 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <labwc_config xmlns="http://openbox.org/3.4/rc">
 
-  <!-- ===== THEME & DECOR =====
-       Rounded corners + shadows need LabWC theme support.
-       Corner radius applies to top corners (SSD). -->
+  <!-- ===== THEME & DECOR ===== -->
   <theme>
     <name>PiXonyx</name>
+    <!-- Rounded corners + shadows (theme supports these) -->
     <cornerRadius>10</cornerRadius>
     <keepBorder>yes</keepBorder>
-
-    <!-- Shadows (SSD windows). For tiled windows too. -->
     <dropShadows>yes</dropShadows>
     <dropShadowsOnTiled>yes</dropShadowsOnTiled>
 
-    <!-- Title fonts & menu fonts -->
+    <!-- Fonts -->
     <font place="ActiveWindow"><name>Inter</name><size>12</size><weight>Medium</weight><slant>Normal</slant></font>
     <font place="InactiveWindow"><name>Inter</name><size>12</size><weight>Light</weight><slant>Normal</slant></font>
     <font place="MenuHeader"><name>Inter</name><size>11</size><weight>Medium</weight><slant>Normal</slant></font>
     <font place="MenuItem"><name>Inter</name><size>11</size><weight>Regular</weight><slant>Normal</slant></font>
 
-    <!-- Maximized: keep titlebar; set to 'none' if you want a clean edge -->
     <titlebar>
       <showTitle>yes</showTitle>
       <maximizeMode>titlebar</maximizeMode>
     </titlebar>
   </theme>
 
-  <!-- ===== CORE LAYOUT ===== -->
+  <!-- ===== FOCUS & PLACEMENT ===== -->
   <focus>
     <followMouse>no</followMouse>
     <raiseOnFocus>no</raiseOnFocus>
@@ -39,42 +35,28 @@
     <monitor>Primary</monitor>
   </placement>
 
-  <!-- Subtle “gaps” around edges so snapped windows breathe -->
-  <margins>
-    <top>8</top>
-    <bottom>8</bottom>
-    <left>8</left>
-    <right>8</right>
-  </margins>
+  <!-- Subtle gaps -->
+  <margins><top>8</top><bottom>8</bottom><left>8</left><right>8</right></margins>
 
-  <!-- ===== WINDOW SNAPPING / TILING UX ===== -->
+  <!-- ===== EDGE SNAP UX ===== -->
   <snapping>
-    <!-- 12px feels good on a small Pi screen -->
     <range>12</range>
     <cornerRange>48</cornerRange>
     <topMaximize>yes</topMaximize>
     <notifyClient>edge</notifyClient>
-    <overlay>
-      <enabled>yes</enabled>
-      <delay>
-        <inner>350</inner>
-        <outer>350</outer>
-      </delay>
-    </overlay>
+    <overlay><enabled>yes</enabled></overlay>
   </snapping>
 
-  <!-- ===== MOUSE BEHAVIOR ===== -->
+  <!-- ===== MOUSE ===== -->
   <mouse>
-    <default/>
-    <!-- Super + Left drag = move, Super + Right drag = resize -->
+    <!-- Super+Left drag = move; Super+Right drag = resize -->
     <context name="Frame">
       <mousebind button="A-Left" action="Press"><action name="Focus"/></mousebind>
       <mousebind button="A-Left" action="Drag"><action name="Move"/></mousebind>
       <mousebind button="A-Right" action="Press"><action name="Focus"/></mousebind>
       <mousebind button="A-Right" action="Drag"><action name="Resize"/></mousebind>
     </context>
-
-    <!-- Right-click anywhere on desktop: open root menu -->
+    <!-- Right-click desktop = root menu -->
     <context name="Root">
       <mousebind button="Right" action="Press">
         <action name="ShowMenu" menu="root-menu"/>
@@ -82,86 +64,78 @@
     </context>
   </mouse>
 
-  <!-- ===== KEYBOARD BINDINGS ===== -->
+  <!-- ===== KEYBOARD (no keypad needed) ===== -->
   <keyboard>
-    <!-- Keep LabWC defaults (Alt+Tab etc.), then add ours -->
     <default/>
-
     <!-- Launchers -->
     <keybind key="Super-Return"><action name="Execute"><command>kitty || x-terminal-emulator</command></action></keybind>
-    <keybind key="Super-Space"><action name="ShowMenu" menu="root-menu"/></keybind> <!-- quick app menu -->
+    <keybind key="Super-Space"><action name="ShowMenu" menu="root-menu"/></keybind>
 
-    <!-- Basic window lifecycle -->
+    <!-- Window lifecycle -->
     <keybind key="Super-Q"><action name="Close"/></keybind>
     <keybind key="Super-F"><action name="ToggleFullscreen"/></keybind>
     <keybind key="Super-M"><action name="MaximizeFull"/></keybind>
     <keybind key="Super-Shift-M"><action name="UnmaximizeFull"/></keybind>
 
-    <!-- Half tiling -->
+    <!-- Half-tiling -->
     <keybind key="Super-Left"><action name="SnapToEdge" direction="left"/></keybind>
     <keybind key="Super-Right"><action name="SnapToEdge" direction="right"/></keybind>
-    <keybind key="Super-Up"><action name="SnapToEdge" direction="up"/></keybind>   <!-- maximizes due to topMaximize -->
+    <keybind key="Super-Up"><action name="SnapToEdge" direction="up"/></keybind>   <!-- maximizes -->
     <keybind key="Super-Down"><action name="SnapToEdge" direction="down"/></keybind>
 
-    <!-- Quarter tiling via combo: hit Right then Up to land top-right -->
-    <keybind key="Super-KP_7"><action name="SnapToEdge" direction="up-left" combine="yes"/></keybind>
-    <keybind key="Super-KP_9"><action name="SnapToEdge" direction="up-right" combine="yes"/></keybind>
-    <keybind key="Super-KP_1"><action name="SnapToEdge" direction="down-left" combine="yes"/></keybind>
-    <keybind key="Super-KP_3"><action name="SnapToEdge" direction="down-right" combine="yes"/></keybind>
+    <!-- Quarter-tiling (arrow combos, no numpad) -->
+    <keybind key="Super-Alt-Left"><action name="MoveResizeTo"><x>0</x><y>0</y><width>50%</width><height>50%</height></action></keybind>
+    <keybind key="Super-Alt-Right"><action name="MoveResizeTo"><x>50%</x><y>0</y><width>50%</width><height>50%</height></action></keybind>
+    <keybind key="Super-Alt-Down"><action name="MoveResizeTo"><x>0</x><y>50%</y><width>50%</width><height>50%</height></action></keybind>
+    <keybind key="Super-Alt-Shift-Down"><action name="MoveResizeTo"><x>50%</x><y>50%</y><width>50%</width><height>50%</height></action></keybind>
 
-    <!-- Move to screen edges without resizing (useful on one screen too) -->
+    <!-- Move to edges without resize -->
     <keybind key="Super-Shift-Left"><action name="MoveToEdge"><direction>west</direction></action></keybind>
     <keybind key="Super-Shift-Right"><action name="MoveToEdge"><direction>east</direction></action></keybind>
     <keybind key="Super-Shift-Up"><action name="MoveToEdge"><direction>north</direction></action></keybind>
     <keybind key="Super-Shift-Down"><action name="MoveToEdge"><direction>south</direction></action></keybind>
 
     <!-- Workspaces (4) -->
-    <keybind key="Super-Page_Up"><action name="GoToDesktop"><to>previous</to></action></keybind>
-    <keybind key="Super-Page_Down"><action name="GoToDesktop"><to>next</to></action></keybind>
     <keybind key="Super-1"><action name="GoToDesktop"><to>1</to></action></keybind>
     <keybind key="Super-2"><action name="GoToDesktop"><to>2</to></action></keybind>
     <keybind key="Super-3"><action name="GoToDesktop"><to>3</to></action></keybind>
     <keybind key="Super-4"><action name="GoToDesktop"><to>4</to></action></keybind>
+    <keybind key="Super-Page_Up"><action name="GoToDesktop"><to>previous</to></action></keybind>
+    <keybind key="Super-Page_Down"><action name="GoToDesktop"><to>next</to></action></keybind>
     <keybind key="Super-Shift-1"><action name="SendToDesktop"><to>1</to><follow>yes</follow></action></keybind>
     <keybind key="Super-Shift-2"><action name="SendToDesktop"><to>2</to><follow>yes</follow></action></keybind>
     <keybind key="Super-Shift-3"><action name="SendToDesktop"><to>3</to><follow>yes</follow></action></keybind>
     <keybind key="Super-Shift-4"><action name="SendToDesktop"><to>4</to><follow>yes</follow></action></keybind>
 
-    <!-- Screenshots (grim/slurp if installed) -->
-    <keybind key="Print">
-      <action name="Execute"><command>grim "$HOME/Pictures/screenshot-$(date +%F_%H-%M-%S).png"</command></action>
-    </keybind>
-    <keybind key="Shift-Print">
-      <action name="Execute"><command>slurp | xargs -I{} grim -g {} /tmp/shot.png && swappy -f /tmp/shot.png</command></action>
-    </keybind>
+    <!-- Screenshots -->
+    <keybind key="Print"><action name="Execute"><command>grim "$HOME/Pictures/screenshot-$(date +%F_%H-%M-%S).png"</command></action></keybind>
+    <keybind key="Shift-Print"><action name="Execute"><command>sh -c 'slurp | xargs -I{} grim -g {} /tmp/shot.png && swappy -f /tmp/shot.png'</command></action></keybind>
 
-    <!-- Safety: quick reconfigure -->
+    <!-- Quick reconfigure -->
     <keybind key="Super-Escape"><action name="Reconfigure"/></keybind>
   </keyboard>
 
   <!-- ===== DESKTOPS ===== -->
   <desktops>
-    <number>4</number>
-    <firstdesk>1</firstdesk>
-    <names>
-      <name>work</name><name>code</name><name>web</name><name>media</name>
-    </names>
+    <number>4</number><firstdesk>1</firstdesk>
+    <names><name>work</name><name>code</name><name>web</name><name>media</name></names>
     <popupTime>900</popupTime>
   </desktops>
 
-  <!-- ===== SIMPLE WINDOW RULES ===== -->
+  <!-- ===== WINDOW RULES ===== -->
   <applications>
     <!-- Center dialogs -->
-    <application type="dialog">
-      <center>yes</center>
-      <decor>yes</decor>
-    </application>
-
-    <!-- Terminals start maximized on the small screen -->
-    <application class="(?i)kitty|alacritty|gnome-terminal">
-      <maximized>true</maximized>
-    </application>
+    <application type="dialog"><center>yes</center><decor>yes</decor></application>
+    <!-- Terminals start maximized on the small display -->
+    <application class="(?i)kitty|alacritty|gnome-terminal"><maximized>true</maximized></application>
   </applications>
+
+  <!-- ===== WACOM PEN: rocker buttons ===== -->
+  <tablet mouseEmulation="no">
+    <!-- Tip stays left-click; map rocker: upper=Right, lower=Middle -->
+    <map button="Stylus"  to="Right"/>
+    <map button="Stylus2" to="Middle"/>
+  </tablet>
 
 </labwc_config>
 

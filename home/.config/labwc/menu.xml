@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="LabWC">
+    <item label="Terminal">
+      <action name="Execute"><command>kitty || x-terminal-emulator</command></action>
+    </item>
+    <item label="Web Browser">
+      <action name="Execute"><command>chromium || x-www-browser</command></action>
+    </item>
+    <item label="Files">
+      <action name="Execute"><command>pcmanfm-pi || pcmanfm</command></action>
+    </item>
+
+    <separator/>
+
+    <menu id="quick-tiles" label="Window Layout">
+      <item label="Left Half (Super+←)"><action name="SnapToEdge" direction="left"/></item>
+      <item label="Right Half (Super+→)"><action name="SnapToEdge" direction="right"/></item>
+      <item label="Top / Maximize (Super+↑)"><action name="SnapToEdge" direction="up"/></item>
+      <item label="Bottom (Super+↓)"><action name="SnapToEdge" direction="down"/></item>
+      <separator/>
+      <item label="Fullscreen (Super+F)"><action name="ToggleFullscreen"/></item>
+      <item label="Close (Super+Q)"><action name="Close"/></item>
+    </menu>
+
+    <menu id="screenshots" label="Screenshots">
+      <item label="Full Screen (Print)">
+        <action name="Execute"><command>grim "$HOME/Pictures/screenshot-$(date +%F_%H-%M-%S).png"</command></action>
+      </item>
+      <item label="Select Area (Shift+Print)">
+        <action name="Execute">
+          <command>sh -c 'slurp | xargs -I{} grim -g {} /tmp/shot.png && swappy -f /tmp/shot.png'</command>
+        </action>
+      </item>
+    </menu>
+
+    <menu id="audio-bt" label="Audio & Bluetooth">
+      <item label="Volume Control"><action name="Execute"><command>pavucontrol</command></action></item>
+      <item label="Bluetooth Manager"><action name="Execute"><command>blueman-manager</command></action></item>
+    </menu>
+
+    <separator/>
+
+    <menu id="config" label="Config & Tools">
+      <item label="Edit rc.xml"><action name="Execute"><command>sh -c 'xdg-open "$HOME/.config/labwc/rc.xml"'</command></action></item>
+      <item label="Edit menu.xml"><action name="Execute"><command>sh -c 'xdg-open "$HOME/.config/labwc/menu.xml"'</command></action></item>
+      <item label="Reconfigure (Super+Esc)"><action name="Reconfigure"/></item>
+    </menu>
+
+    <menu id="system" label="System">
+      <item label="Reboot"><action name="Execute"><command>systemctl reboot</command></action></item>
+      <item label="Power Off"><action name="Execute"><command>systemctl poweroff</command></action></item>
+    </menu>
+  </menu>
+</openbox_menu>
+
