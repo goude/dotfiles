@@ -78,27 +78,13 @@
 
     <separator/>
 
-    <menu id="config" label="Config &amp; Tools">
-      <item label="Edit rc.xml">
-        <action name="Execute">
-          <command><![CDATA[
-            xdg-open "$HOME/.config/labwc/rc.xml"
-          ]]></command>
-        </action>
-      </item>
-      <item label="Edit menu.xml">
-        <action name="Execute">
-          <command><![CDATA[
-            xdg-open "$HOME/.config/labwc/menu.xml"
-          ]]></command>
-        </action>
-      </item>
+    <menu id="system" label="System">
       <item label="Reconfigure (Super+Esc)">
         <action name="Reconfigure"/>
       </item>
-    </menu>
 
-    <menu id="system" label="System">
+      <separator/>
+
       <item label="Reboot">
         <action name="Execute">
           <command><![CDATA[

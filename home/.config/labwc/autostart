@@ -1,1 +1,2 @@
+~/bin/swww-daemon &
 waybar &

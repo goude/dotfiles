@@ -125,48 +125,70 @@
     </keybind>
 
     <!-- Launchers -->
-    <keybind key="Super-Return">
+    <keybind key="W-Return">
       <action name="Execute">
         <command>kitty</command>
       </action>
     </keybind>
 
-    <keybind key="Super-Space">
-      <action name="ShowMenu">
-        <menu>root-menu</menu>
-      </action>
-    </keybind>
-
     <!-- Window lifecycle -->
-    <keybind key="Super-Q">
+    <keybind key="W-Q">
       <action name="Close"/>
     </keybind>
-    <keybind key="Super-F">
+    <keybind key="W-F">
       <action name="ToggleFullscreen"/>
     </keybind>
-    <keybind key="Super-M">
+    <keybind key="W-M">
       <action name="Maximize"/>
     </keybind>
-    <keybind key="Super-Shift-M">
+    <keybind key="W-Shift-M">
       <action name="UnMaximize"/>
     </keybind>
 
+    <!-- Half left -->
+    <keybind key="W-S-7">
+      <action name="MoveResizeTo">
+        <x>0</x><y>0</y><width>50%</width><height>100%</height>
+      </action>
+    </keybind>
+
+    <!-- Two-thirds left -->
+    <keybind key="W-S-8">
+      <action name="MoveResizeTo">
+        <x>0</x><y>0</y><width>66%</width><height>100%</height>
+      </action>
+    </keybind>
+
+    <!-- One-third right -->
+    <keybind key="W-S-9">
+      <action name="MoveResizeTo">
+        <x>66%</x><y>0</y><width>34%</width><height>100%</height>
+      </action>
+    </keybind>
+
+    <!-- Half right -->
+    <keybind key="W-S-0">
+      <action name="MoveResizeTo">
+        <x>50%</x><y>0</y><width>50%</width><height>100%</height>
+      </action>
+    </keybind>
+
     <!-- Half-tiling -->
-    <keybind key="Super-Left">
+    <keybind key="W-Left">
       <action name="SnapToEdge" direction="left"/>
     </keybind>
-    <keybind key="Super-Right">
+    <keybind key="W-Right">
       <action name="SnapToEdge" direction="right"/>
     </keybind>
-    <keybind key="Super-Up">
+    <keybind key="W-Up">
       <action name="SnapToEdge" direction="up"/>
     </keybind>
-    <keybind key="Super-Down">
+    <keybind key="W-Down">
       <action name="SnapToEdge" direction="down"/>
     </keybind>
 
     <!-- Quarter-tiling (arrow combos, no numpad) -->
-    <keybind key="Super-Alt-Left">
+    <keybind key="W-Alt-Left">
       <action name="MoveResizeTo">
         <x>0</x>
         <y>0</y>
@@ -174,7 +196,7 @@
         <height>50%</height>
       </action>
     </keybind>
-    <keybind key="Super-Alt-Right">
+    <keybind key="W-Alt-Right">
       <action name="MoveResizeTo">
         <x>50%</x>
         <y>0</y>
@@ -182,7 +204,7 @@
         <height>50%</height>
       </action>
     </keybind>
-    <keybind key="Super-Alt-Down">
+    <keybind key="W-Alt-Down">
       <action name="MoveResizeTo">
         <x>0</x>
         <y>50%</y>
@@ -190,7 +212,7 @@
         <height>50%</height>
       </action>
     </keybind>
-    <keybind key="Super-Alt-Shift-Down">
+    <keybind key="W-Alt-S-Down">
       <action name="MoveResizeTo">
         <x>50%</x>
         <y>50%</y>
@@ -200,57 +222,57 @@
     </keybind>
 
     <!-- Move to edges without resize -->
-    <keybind key="Super-Shift-Left">
+    <keybind key="W-S-Left">
       <action name="MoveToEdge">
         <direction>west</direction>
       </action>
     </keybind>
-    <keybind key="Super-Shift-Right">
+    <keybind key="W-S-Right">
       <action name="MoveToEdge">
         <direction>east</direction>
       </action>
     </keybind>
-    <keybind key="Super-Shift-Up">
+    <keybind key="W-S-Up">
       <action name="MoveToEdge">
         <direction>north</direction>
       </action>
     </keybind>
-    <keybind key="Super-Shift-Down">
+    <keybind key="W-S-Down">
       <action name="MoveToEdge">
         <direction>south</direction>
       </action>
     </keybind>
 
     <!-- Workspaces (4) -->
-    <keybind key="Super-1">
+    <keybind key="W-1">
       <action name="GoToDesktop"><to>1</to></action>
     </keybind>
-    <keybind key="Super-2">
+    <keybind key="W-2">
       <action name="GoToDesktop"><to>2</to></action>
     </keybind>
-    <keybind key="Super-3">
+    <keybind key="W-3">
       <action name="GoToDesktop"><to>3</to></action>
     </keybind>
-    <keybind key="Super-4">
+    <keybind key="W-4">
       <action name="GoToDesktop"><to>4</to></action>
     </keybind>
-    <keybind key="Super-Page_Up">
+    <keybind key="W-Page_Up">
       <action name="GoToDesktop"><to>previous</to></action>
     </keybind>
-    <keybind key="Super-Page_Down">
+    <keybind key="W-Page_Down">
       <action name="GoToDesktop"><to>next</to></action>
     </keybind>
 
-    <keybind key="Super-Shift-1">
+    <keybind key="W-S-1">
       <action name="SendToDesktop"><to>1</to><follow>yes</follow></action>
     </keybind>
-    <keybind key="Super-Shift-2">
+    <keybind key="W-S-2">
       <action name="SendToDesktop"><to>2</to><follow>yes</follow></action>
     </keybind>
-    <keybind key="Super-Shift-3">
+    <keybind key="W-S-3">
       <action name="SendToDesktop"><to>3</to><follow>yes</follow></action>
     </keybind>
-    <keybind key="Super-Shift-4">
+    <keybind key="W-S-4">
       <action name="SendToDesktop"><to>4</to><follow>yes</follow></action>
     </keybind>
 
@@ -262,9 +284,24 @@
     </keybind>
 
     <!-- Quick reconfigure -->
-    <keybind key="Super-Escape">
+    <keybind key="W-Escape">
       <action name="Reconfigure"/>
+      <action name="Execute"><command>notify-send "Reconfigured labwc."</command></action>
     </keybind>
+
+    <keybind key="W-s">
+      <action name="Execute"><command>notify-send "W-s fired"</command></action>
+    </keybind>
+
+    <keybind key="W-S-s">
+      <action name="Execute"><command>notify-send "W-S-s fired"</command></action>
+    </keybind>
+
+    <keybind key="W-Space">
+      <action name="Execute"><command>notify-send "W-Space fired"</command></action>
+      <action name="Execute"><command>wofi --show drun</command></action>
+    </keybind>
+
   </keyboard>
 
   <!-- ===== DESKTOPS ===== -->
