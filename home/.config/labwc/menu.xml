@@ -5,23 +5,15 @@
     <item label="Terminal">
       <action name="Execute">
         <command><![CDATA[
-          kitty || x-terminal-emulator
+          kitty
         ]]></command>
       </action>
     </item>
 
-    <item label="Web Browser">
+    <item label="Chromium">
       <action name="Execute">
         <command><![CDATA[
-          chromium || x-www-browser
-        ]]></command>
-      </action>
-    </item>
-
-    <item label="Files">
-      <action name="Execute">
-        <command><![CDATA[
-          pcmanfm-pi || pcmanfm
+          chromium
         ]]></command>
       </action>
     </item>
