@@ -25,18 +25,21 @@
       <weight>Medium</weight>
       <slant>Normal</slant>
     </font>
+
     <font place="InactiveWindow">
       <name>Inter</name>
       <size>10</size>
       <weight>Light</weight>
       <slant>Normal</slant>
     </font>
+
     <font place="MenuHeader">
       <name>Inter</name>
       <size>10</size>
       <weight>Medium</weight>
       <slant>Normal</slant>
     </font>
+
     <font place="MenuItem">
       <name>Inter</name>
       <size>10</size>
@@ -52,7 +55,7 @@
 
   <!-- ===== FOCUS & PLACEMENT ===== -->
   <focus>
-    <followMouse>no</followMouse>
+    <followMouse>yes</followMouse>
     <raiseOnFocus>no</raiseOnFocus>
     <focusLast>yes</focusLast>
   </focus>
@@ -84,22 +87,6 @@
 
   <!-- ===== MOUSE ===== -->
   <mouse>
-    <!-- Super (W) + Left drag = move; Super + Right drag = resize -->
-    <context name="Frame">
-      <mousebind button="W-Left" action="Press">
-        <action name="Focus"/>
-      </mousebind>
-      <mousebind button="W-Left" action="Drag">
-        <action name="Move"/>
-      </mousebind>
-      <mousebind button="W-Right" action="Press">
-        <action name="Focus"/>
-      </mousebind>
-      <mousebind button="W-Right" action="Drag">
-        <action name="Resize"/>
-      </mousebind>
-    </context>
-
     <!-- Right-click desktop = root menu -->
     <context name="Root">
       <mousebind button="Right" action="Press">
@@ -117,13 +104,6 @@
     <keybind key="Super_L"/>
     <keybind key="Super_R"/>
 
-    <!-- Quick test launcher -->
-    <keybind key="W-t">
-      <action name="Execute">
-        <command>kitty</command>
-      </action>
-    </keybind>
-
     <!-- Launchers -->
     <keybind key="W-Return">
       <action name="Execute">
@@ -135,41 +115,38 @@
     <keybind key="W-Q">
       <action name="Close"/>
     </keybind>
+
     <keybind key="W-F">
       <action name="ToggleFullscreen"/>
     </keybind>
+
+    <!-- Broken - W-M bound elsewhere? -->
     <keybind key="W-M">
+      <action name="Execute"><command>notify-send "W-M Maximize"</command></action>
       <action name="Maximize"/>
     </keybind>
+
     <keybind key="W-Shift-M">
       <action name="UnMaximize"/>
     </keybind>
 
-    <!-- Half left -->
-    <keybind key="W-S-7">
+    <!-- Broken - Two-thirds left -->
+    <keybind key="W-S-Left">
+      <action name="Execute"><command>notify-send "W-S-Left 2/3 Tile"</command></action>
+      <action name="UnmaximizeFull"/>
       <action name="MoveResizeTo">
-        <x>0</x><y>0</y><width>50%</width><height>100%</height>
+        <monitor>active</monitor>
+        <x>0%</x><y>0%</y><width>66%</width><height>100%</height>
       </action>
     </keybind>
 
-    <!-- Two-thirds left -->
-    <keybind key="W-S-8">
+    <!-- Broken - One-third right -->
+    <keybind key="W-S-Right">
+      <action name="Execute"><command>notify-send "W-S-Right 1/3 Tile"</command></action>
+      <action name="UnmaximizeFull"/>
       <action name="MoveResizeTo">
-        <x>0</x><y>0</y><width>66%</width><height>100%</height>
-      </action>
-    </keybind>
-
-    <!-- One-third right -->
-    <keybind key="W-S-9">
-      <action name="MoveResizeTo">
-        <x>66%</x><y>0</y><width>34%</width><height>100%</height>
-      </action>
-    </keybind>
-
-    <!-- Half right -->
-    <keybind key="W-S-0">
-      <action name="MoveResizeTo">
-        <x>50%</x><y>0</y><width>50%</width><height>100%</height>
+        <monitor>active</monitor>
+        <x>66%</x><y>0%</y><width>34%</width><height>100%</height>
       </action>
     </keybind>
 
@@ -177,51 +154,22 @@
     <keybind key="W-Left">
       <action name="SnapToEdge" direction="left"/>
     </keybind>
+
     <keybind key="W-Right">
       <action name="SnapToEdge" direction="right"/>
     </keybind>
+
     <keybind key="W-Up">
-      <action name="SnapToEdge" direction="up"/>
+      <action name="Execute"><command>notify-send "W-Up Maximize"</command></action>
+      <action name="Maximize"/>
     </keybind>
+
     <keybind key="W-Down">
       <action name="SnapToEdge" direction="down"/>
     </keybind>
 
-    <!-- Quarter-tiling (arrow combos, no numpad) -->
-    <keybind key="W-Alt-Left">
-      <action name="MoveResizeTo">
-        <x>0</x>
-        <y>0</y>
-        <width>50%</width>
-        <height>50%</height>
-      </action>
-    </keybind>
-    <keybind key="W-Alt-Right">
-      <action name="MoveResizeTo">
-        <x>50%</x>
-        <y>0</y>
-        <width>50%</width>
-        <height>50%</height>
-      </action>
-    </keybind>
-    <keybind key="W-Alt-Down">
-      <action name="MoveResizeTo">
-        <x>0</x>
-        <y>50%</y>
-        <width>50%</width>
-        <height>50%</height>
-      </action>
-    </keybind>
-    <keybind key="W-Alt-S-Down">
-      <action name="MoveResizeTo">
-        <x>50%</x>
-        <y>50%</y>
-        <width>50%</width>
-        <height>50%</height>
-      </action>
-    </keybind>
-
     <!-- Move to edges without resize -->
+    <!--
     <keybind key="W-S-Left">
       <action name="MoveToEdge">
         <direction>west</direction>
@@ -242,6 +190,7 @@
         <direction>south</direction>
       </action>
     </keybind>
+    -->
 
     <!-- Workspaces (4) -->
     <keybind key="W-1">
@@ -253,9 +202,8 @@
     <keybind key="W-3">
       <action name="GoToDesktop"><to>3</to></action>
     </keybind>
-    <keybind key="W-4">
-      <action name="GoToDesktop"><to>4</to></action>
-    </keybind>
+
+    <!-- Broken binding? -->
     <keybind key="W-Page_Up">
       <action name="GoToDesktop"><to>previous</to></action>
     </keybind>
@@ -271,9 +219,6 @@
     </keybind>
     <keybind key="W-S-3">
       <action name="SendToDesktop"><to>3</to><follow>yes</follow></action>
-    </keybind>
-    <keybind key="W-S-4">
-      <action name="SendToDesktop"><to>4</to><follow>yes</follow></action>
     </keybind>
 
     <!-- Screenshots -->
@@ -302,17 +247,33 @@
       <action name="Execute"><command>wofi --show drun</command></action>
     </keybind>
 
+    <!-- Bindings do not work yet, check global settings -->
+
+    <!-- Alt-Tab: cycle through all windows -->
+    <keybind key="A-Tab">
+      <action name="NextWindow">
+        <allDesktops>yes</allDesktops>
+        <panels>no</panels>
+      </action>
+    </keybind>
+
+    <!-- Shift+Alt+Tab: reverse direction -->
+    <keybind key="A-S-Tab">
+      <action name="PreviousWindow">
+        <allDesktops>yes</allDesktops>
+        <panels>no</panels>
+      </action>
+    </keybind>
   </keyboard>
 
   <!-- ===== DESKTOPS ===== -->
   <desktops>
-    <number>4</number>
+    <number>3</number>
     <firstdesk>1</firstdesk>
     <names>
-      <name>work</name>
-      <name>code</name>
+      <name>main</name>
       <name>web</name>
-      <name>media</name>
+      <name>aux</name>
     </names>
     <popupTime>900</popupTime>
   </desktops>
@@ -323,11 +284,6 @@
     <application type="dialog">
       <center>yes</center>
       <decor>yes</decor>
-    </application>
-
-    <!-- Terminals start maximized on the small display -->
-    <application class="(?i)kitty|alacritty|gnome-terminal">
-      <maximized>true</maximized>
     </application>
   </applications>
 

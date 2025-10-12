@@ -3,6 +3,7 @@
 -- if true then return {} end
 
 if true then return {
+  { "ellisonleao/gruvbox.nvim" },
   { "jalvesaq/Nvim-R" }
 } end
 -- every spec file under the "plugins" directory will be loaded automatically by lazy.nvim
