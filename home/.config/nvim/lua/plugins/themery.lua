@@ -4,10 +4,20 @@ return {
   lazy = false,
   opts = {
     themes = {
+      {
+        name = "Gruvbox dark",
+        colorscheme = "gruvbox",
+      },
+      {
+        name = "Gruvbox light",
+        colorscheme = "gruvbox",
+        before = [[ vim.opt.background = "light" ]],
+      },
       "tokyonight",
       "catppuccin",
       "gruvbox",
     },
+    globalBefore = [[ vim.opt.background = "dark" ]],
     livePreview = true,
   },
   keys = {

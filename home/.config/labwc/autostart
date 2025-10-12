@@ -1,2 +1,2 @@
 ~/bin/swww-daemon &
-waybar &
+~/repos/Waybar/build/waybar &
