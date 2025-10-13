@@ -18,6 +18,14 @@
       </action>
     </item>
 
+    <item label="New Wallpaper">
+      <action name="Execute">
+        <command><![CDATA[
+          ~/bin/random-wallpaper
+        ]]></command>
+      </action>
+    </item>
+
     <separator/>
 
     <menu id="quick-tiles" label="Window Layout">
