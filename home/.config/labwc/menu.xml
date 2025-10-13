@@ -93,6 +93,13 @@
 
       <separator/>
 
+      <item label="Lock">
+        <action name="Execute">
+          <command><![CDATA[
+            gtklock
+          ]]></command>
+        </action>
+      </item>
       <item label="Reboot">
         <action name="Execute">
           <command><![CDATA[
