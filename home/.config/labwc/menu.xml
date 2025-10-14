@@ -93,6 +93,13 @@
 
       <separator/>
 
+      <item label="swww-daemon">
+        <action name="Execute">
+          <command><![CDATA[
+            swww-daemon
+          ]]></command>
+        </action>
+      </item>
       <item label="Lock">
         <action name="Execute">
           <command><![CDATA[
