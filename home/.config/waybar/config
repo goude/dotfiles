@@ -4,17 +4,16 @@
   "position": "bottom",
   //"margin-bottom": -10,
   "spacing": 0,
-  "modules-left": ["custom/lock", "custom/uptime", "cpu", "ext/workspaces"],
+  "modules-left": ["custom/lock", "custom/uptime", "cpu", "disk"],
 
-  "modules-center": ["clock"],
+  "modules-center": ["ext/workspaces"],
 
   "modules-right": [
     //"custom/pomodoro",
+    "clock",
     "bluetooth",
     "network",
     "pulseaudio",
-    "backlight",
-    "battery",
   ],
 
   "ext/workspaces": {
@@ -70,6 +69,10 @@
     "tooltip-format": "Memory",
   },
 
+  "disk": {
+    "interval": 30,
+  },
+
   "custom/uptime": {
     "format": "{}",
     "format-icon": [""],
@@ -112,7 +115,7 @@
 
   "custom/lock": {
     "tooltip": false,
-    "on-click": "sh -c '(sleep 0s; hyprlock)' & disown",
+    "on-click": "gtklock",
     "format": "",
   },
 

@@ -19,6 +19,7 @@
 /* --- Left Modules (Individual, Fully Rounded Blocks - With Horizontal Spacing & Simple Hover) --- */
 #workspaces,
 #custom-uptime,
+#disk,
 #cpu {
   background-color: #1a1b26;
   padding: 0.3rem 0.7rem;
