@@ -140,6 +140,7 @@
     <keybind key="Super_R"/>
 
     <!-- Launchers -->
+    <!-- Open a kitty Terminal -->
     <keybind key="W-Return">
       <action name="Execute">
         <command>kitty</command>
@@ -147,6 +148,8 @@
     </keybind>
 
     <!-- Window lifecycle -->
+
+    <!-- 😷 Close Window -->
     <keybind key="W-Q">
       <action name="Close"/>
     </keybind>
