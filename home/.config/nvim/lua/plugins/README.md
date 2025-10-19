@@ -1,1 +1,1 @@
-Look at the `examples.lua` file.
+Look at the `main.lua` file.

@@ -4,29 +4,30 @@ if true then
 
     { "jalvesaq/Nvim-R" },
 
-    {
-      "hrsh7th/nvim-cmp",
-      opts = function(_, opts)
-        opts.sources = opts.sources or {}
-        local has = false
-        for _, s in ipairs(opts.sources) do
-          if s.name == "emoji" then
-            has = true
-            break
-          end
-        end
-        if not has then
-          table.insert(opts.sources, { name = "emoji", priority = 700 })
-        end
-
-        -- Make “:” start completion even if it’s not treated as a keyword.
-        -- Many sources set trigger chars themselves; this helps if not.
-        opts.experimental = opts.experimental or {}
-        opts.completion = vim.tbl_deep_extend("force", opts.completion or {}, {
-          keyword_pattern = [[\%(:\)\?\k\+]],
-        })
-      end,
-    },
+    -- Trying to enable emoji : completion in nvim-cmp but failed thus far
+    -- {
+    --   "hrsh7th/nvim-cmp",
+    --   opts = function(_, opts)
+    --     opts.sources = opts.sources or {}
+    --     local has = false
+    --     for _, s in ipairs(opts.sources) do
+    --       if s.name == "emoji" then
+    --         has = true
+    --         break
+    --       end
+    --     end
+    --     if not has then
+    --       table.insert(opts.sources, { name = "emoji", priority = 700 })
+    --     end
+    --
+    --     -- Make “:” start completion even if it’s not treated as a keyword.
+    --     -- Many sources set trigger chars themselves; this helps if not.
+    --     opts.experimental = opts.experimental or {}
+    --     opts.completion = vim.tbl_deep_extend("force", opts.completion or {}, {
+    --       keyword_pattern = [[\%(:\)\?\k\+]],
+    --     })
+    --   end,
+    -- },
   }
 end
 
