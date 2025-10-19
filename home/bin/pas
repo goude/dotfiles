@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Paste from clipboard - works on Wayland (wl-paste) and macOS (pbpaste)
+
+if command -v wl-paste &> /dev/null; then
+    wl-paste
+elif command -v pbpaste &> /dev/null; then
+    pbpaste
+else
+    echo "Error: No clipboard command found (tried wl-paste, pbpaste)" >&2
+    exit 1
+fi

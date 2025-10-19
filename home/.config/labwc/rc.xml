@@ -269,10 +269,9 @@
       </action>
     </keybind>
 
-    <!-- Quick reconfigure -->
+    <!-- Reconfigure labwc -->
     <keybind key="W-Escape">
       <action name="Reconfigure"/>
-      <action name="Execute"><command>notify-send "Reconfigured labwc."</command></action>
     </keybind>
 
     <keybind key="W-s">
@@ -290,7 +289,7 @@
 
     <!-- Bindings do not work yet, check global settings -->
 
-    <!-- Alt-Tab: cycle through all windows -->
+    <!-- Cycle through all windows on current desktop -->
     <keybind key="A-Tab">
       <action name="NextWindow">
         <allDesktops>yes</allDesktops>
