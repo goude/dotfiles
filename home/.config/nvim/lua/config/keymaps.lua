@@ -7,3 +7,9 @@
 -- vim.keymap.set("i", "<M-k>", "k")
 -- vim.keymap.set("n", "<M-j>", "j")
 -- vim.keymap.set("n", "<M-k>", "k")
+--
+
+vim.keymap.set("n", "<leader>td", function()
+  vim.diagnostic.enable(not vim.diagnostic.is_enabled())
+  print("Diagnostics " .. (vim.diagnostic.is_enabled() and "enabled" or "disabled"))
+end, { desc = "Toggle diagnostics" })

@@ -1,2 +1,3 @@
 ~/bin/swww-daemon &
 ~/repos/Waybar/build/waybar &
+(cd ~/repos/keyflow && just run &)
