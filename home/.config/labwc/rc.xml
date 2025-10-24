@@ -140,7 +140,7 @@
     <keybind key="Super_R"/>
 
     <!-- Launchers -->
-    <!-- Open a kitty Terminal -->
+    <!-- Open a 🐈 kitty Terminal -->
     <keybind key="W-Return">
       <action name="Execute">
         <command>kitty</command>
@@ -154,20 +154,23 @@
       <action name="Close"/>
     </keybind>
 
+    <!-- Toggle fullscreen -->
     <keybind key="W-F">
       <action name="ToggleFullscreen"/>
     </keybind>
 
-    <!-- Broken - W-M bound elsewhere? -->
+    <!-- Maximize window -->
     <keybind key="W-M">
       <action name="Execute"><command>notify-send "W-M Maximize"</command></action>
       <action name="Maximize"/>
     </keybind>
 
+    <!-- Unmaximize window -->
     <keybind key="W-Shift-M">
       <action name="UnMaximize"/>
     </keybind>
 
+    <!-- Split windows 2/3 left -->
     <keybind key="W-S-Left">
       <action name="Foreach">
         <query>
@@ -182,6 +185,7 @@
       </action>
     </keybind>
 
+    <!-- Split windows 1/3 right -->
     <keybind key="W-S-Right">
       <action name="Foreach">
         <query>
@@ -196,6 +200,7 @@
       </action>
     </keybind>
 
+    <!-- Split windows 50/50 -->
     <keybind key="W-S-Down">
       <action name="Foreach">
         <query>
@@ -210,16 +215,17 @@
       </action>
     </keybind>
 
-
+    <!-- Toggle fullscreen -->
     <keybind key="W-S-Up">
       <action name="ToggleFullscreen" />
     </keybind>
 
-    <!-- Half-tiling -->
+    <!-- Half-tiling left -->
     <keybind key="W-Left">
       <action name="SnapToEdge" direction="left"/>
     </keybind>
 
+    <!-- Half-tiling right -->
     <keybind key="W-Right">
       <action name="SnapToEdge" direction="right"/>
     </keybind>
@@ -234,12 +240,15 @@
     </keybind>
 
     <!-- Workspaces (3) -->
+    <!-- Show desktop 1 -->
     <keybind key="W-1">
       <action name="GoToDesktop"><to>1</to></action>
     </keybind>
+    <!-- Show desktop 2 -->
     <keybind key="W-2">
       <action name="GoToDesktop"><to>2</to></action>
     </keybind>
+    <!-- Show desktop 3 -->
     <keybind key="W-3">
       <action name="GoToDesktop"><to>3</to></action>
     </keybind>
@@ -287,8 +296,6 @@
       <action name="Execute"><command>wofi --show drun</command></action>
     </keybind>
 
-    <!-- Bindings do not work yet, check global settings -->
-
     <!-- Cycle through all windows on current desktop -->
     <keybind key="A-Tab">
       <action name="NextWindow">
@@ -297,7 +304,7 @@
       </action>
     </keybind>
 
-    <!-- Shift+Alt+Tab: reverse direction -->
+    <!-- Cycle through windows, reverse order -->
     <keybind key="A-S-Tab">
       <action name="PreviousWindow">
         <allDesktops>yes</allDesktops>
