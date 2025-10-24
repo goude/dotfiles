@@ -8,6 +8,6 @@ function afs_stuff --on-variable PWD --description 'Do afs stuff'
 
     # Show todo.txt if present
     if test -e todo.txt
-        bat todo.txt
+        cat todo.txt
     end
 end
