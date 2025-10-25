@@ -220,14 +220,21 @@
     <keybind key="W-S-Down">
       <action name="Foreach">
         <query>
-          <focused>yes</focused>
+          <desktop>current</desktop>
         </query>
         <then>
-          <action name="SnapToRegion" region="left-50" />
+          <action name="If">
+            <query>
+              <focused>yes</focused>
+            </query>
+            <then>
+              <action name="SnapToRegion" region="left-50" />
+            </then>
+            <else>
+              <action name="SnapToRegion" region="right-50"/>
+            </else>
+          </action>
         </then>
-        <else>
-          <action name="SnapToRegion" region="right-50"/>
-        </else>
       </action>
     </keybind>
 
