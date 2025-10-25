@@ -1,42 +1,79 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
+# Cross-shell environment init — works in Bash (Linux/WSL) and Zsh (macOS)
 
-export HOMESHICK_REPOS=$HOME/.homesick/repos
-
-# Ensure locale is set
+# — Locale setup —
 export LANG=en_US.UTF-8
 export LANGUAGE=en_US.UTF-8
 export LC_CTYPE=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
-# See https://github.com/rbong/gruvbox for colors
-#export FZF_DEFAULT_COMMAND='ag -g ""'
-export FZF_DEFAULT_OPTS='
-	--reverse --height=100% --inline-info
-	--color fg:246,bg:235,hl:124,fg+:106,bg+:237,hl+:124
-  --color info:208,prompt:108,spinner:142,pointer:166,marker:214
-'
+# — Paths —
+export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
 
-#export PATH=$PATH:$GOPATH/bin:$HOME/bin:$HOME/.fzf/bin:$HOME/.cargo/bin
-#export PATH=$HOME/bin:$HOME/.local/bin #:$HOME/.cargo/bin:$PATH:$HOME/.fzf/bin:
-export PATH=$HOME/bin:$HOME/.local/bin:$PATH
+# — Homeshick configuration —
+export HOMESHICK_REPOS="$HOME/.homesick/repos"
 
-export DOTFILES_TMUX_SHELL=$HOME/bin/fish
+# — fzf configuration —
+# Determine previewer
+if command -v batcat >/dev/null 2>&1; then
+  FZF_PREVIEW_CMD='batcat --color=always --style=numbers --line-range=:500 {}'
+elif command -v bat >/dev/null 2>&1; then
+  FZF_PREVIEW_CMD='bat --color=always --style=numbers --line-range=:500 {}'
+else
+  FZF_PREVIEW_CMD='head -n 200 {}'
+fi
+export FZF_PREVIEW_CMD
 
-# Source optional additional settings
-if [[ -f $HOMESHICK_REPOS/pruncom2/rc.pruncom ]]; then
-  source $HOMESHICK_REPOS/pruncom2/rc.pruncom
+# Determine file search command
+if command -v rg >/dev/null 2>&1; then
+  export FZF_DEFAULT_COMMAND='rg --files --hidden --follow --glob "!.git/*"'
+else
+  export FZF_DEFAULT_COMMAND='find . -type f'
 fi
 
-# Activate homeshick - git dotfile synchronizer
-source $HOMESHICK_REPOS/homeshick/homeshick.sh
+# Visual configuration (gruvbox-inspired)
+export FZF_DEFAULT_OPTS="
+  --reverse
+  --height=100%
+  --inline-info
+  --border
+  --preview-window=right:60%
+  --color fg:246,bg:235,hl:124,fg+:106,bg+:237,hl+:124
+  --color info:208,prompt:108,spinner:142,pointer:166,marker:214
+  --preview '$FZF_PREVIEW_CMD'
+"
 
-# fasd navigator
-eval "$(fasd --init auto)"
+# — Fish shell for tmux sessions —
+export DOTFILES_TMUX_SHELL="$HOME/bin/fish"
 
-# nvm (slow loading)
-#alias nvm='[ -s "$NVM_DIR/nvm.sh" ] && unalias nvm && . "$NVM_DIR/nvm.sh" && nvm $@'
-#if [ -z ${NVM_RC_VERSION+x} ]; then #  if NVM... is not set
+# — Source pruncom2 configuration (optional) —
+[[ -f "$HOMESHICK_REPOS/pruncom2/rc.pruncom" ]] && source "$HOMESHICK_REPOS/pruncom2/rc.pruncom"
+
+# — Activate Homeshick (dotfile synchronizer) —
+[[ -f "$HOMESHICK_REPOS/homeshick/homeshick.sh" ]] && source "$HOMESHICK_REPOS/homeshick/homeshick.sh"
+
+# — fasd navigator (optional) —
+command -v fasd >/dev/null 2>&1 && eval "$(fasd --init auto)"
+
+# — nvm (Node Version Manager) —
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" && nvm use node
-#fi
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  # shellcheck disable=SC1090
+  . "$NVM_DIR/nvm.sh" >/dev/null 2>&1
+  nvm use node >/dev/null 2>&1 || true
+fi
 
+# — Keyboard tweak: Caps Lock → Control (only on X11) —
+if [[ -n "${DISPLAY:-}" && -z "${WAYLAND_DISPLAY:-}" ]]; then
+  command -v setxkbmap >/dev/null 2>&1 && setxkbmap -option ctrl:nocaps
+fi
+
+# — Platform adjustments —
+if grep -qi microsoft /proc/version 2>/dev/null; then
+  export BROWSER="wslview"
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+  export BROWSER="open"
+fi
+
+# — Safe exit when sourced —
+return 0 2>/dev/null || true
