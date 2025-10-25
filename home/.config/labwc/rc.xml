@@ -174,14 +174,22 @@
     <keybind key="W-S-Left">
       <action name="Foreach">
         <query>
-          <focused>yes</focused>
+          <desktop>current</desktop>
         </query>
         <then>
-          <action name="SnapToRegion" region="left-67" />
+          <action name="If">
+            <query>
+              <focused>yes</focused>
+            </query>
+            <then>
+              <action name="SnapToRegion" region="left-67" />
+            </then>
+            <else>
+              <action name="SnapToRegion" region="right-33"/>
+            </else>
+          </action>
         </then>
-        <else>
-          <action name="SnapToRegion" region="right-33"/>
-        </else>
+        <else></else>
       </action>
     </keybind>
 
@@ -189,14 +197,22 @@
     <keybind key="W-S-Right">
       <action name="Foreach">
         <query>
-          <focused>yes</focused>
+          <desktop>current</desktop>
         </query>
         <then>
-          <action name="SnapToRegion" region="right-33" />
+          <action name="If">
+            <query>
+              <focused>yes</focused>
+            </query>
+            <then>
+              <action name="SnapToRegion" region="right-33" />
+            </then>
+            <else>
+              <action name="SnapToRegion" region="left-67"/>
+            </else>
+          </action>
         </then>
-        <else>
-          <action name="SnapToRegion" region="left-67"/>
-        </else>
+        <else></else>
       </action>
     </keybind>
 
