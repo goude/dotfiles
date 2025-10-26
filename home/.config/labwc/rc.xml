@@ -13,14 +13,14 @@
     <region name="left-67">
       <x>0%</x>
       <y>0%</y>
-      <width>67%</width>
+      <width>60%</width>
       <height>100%</height>
     </region>
 
     <region name="right-33">
-      <x>67%</x>
+      <x>60%</x>
       <y>0%</y>
-      <width>33%</width>
+      <width>40%</width>
       <height>100%</height>
     </region>
 
@@ -35,6 +35,13 @@
       <x>50%</x>
       <y>0%</y>
       <width>50%</width>
+      <height>100%</height>
+    </region>
+
+    <region name="mid-80">
+      <x>15%</x>
+      <y>0%</y>
+      <width>70%</width>
       <height>100%</height>
     </region>
   </regions>
@@ -254,33 +261,38 @@
     </keybind>
 
     <keybind key="W-Up">
-      <action name="Execute"><command>notify-send "W-Up Maximize"</command></action>
       <action name="Maximize"/>
     </keybind>
 
+    <!-- Middle of screen -->
     <keybind key="W-Down">
-      <action name="SnapToEdge" direction="down"/>
+      <action name="SnapToRegion" region="mid-80"/>
     </keybind>
 
-    <!-- Workspaces (3) -->
     <!-- Show desktop 1 -->
     <keybind key="W-1">
       <action name="GoToDesktop"><to>1</to></action>
     </keybind>
+
     <!-- Show desktop 2 -->
     <keybind key="W-2">
       <action name="GoToDesktop"><to>2</to></action>
     </keybind>
+
     <!-- Show desktop 3 -->
     <keybind key="W-3">
       <action name="GoToDesktop"><to>3</to></action>
     </keybind>
 
-    <!-- Broken binding? -->
-    <keybind key="W-Page_Up">
+    <!-- Broken binding? PGUP PGDOWN what are they called... -->
+    <keybind key="W-Prior">
+      <action name="Execute"><command>notify-send "desktop previous"</command></action>
       <action name="GoToDesktop"><to>previous</to></action>
     </keybind>
-    <keybind key="W-Page_Down">
+
+    <!-- Broken binding? PGUP PGDOWN what are they called... -->
+    <keybind key="W-Next">
+      <action name="Execute"><command>notify-send "desktop next"</command></action>
       <action name="GoToDesktop"><to>next</to></action>
     </keybind>
 
