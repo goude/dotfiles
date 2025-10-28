@@ -1,0 +1,239 @@
+#!/bin/sh
+#
+# tmux-margins: Centered pane with side margins for focused work
+# Inspired by the original, with border color management added
+#
+# Usage:
+#   tmux-margins create [PANE_ID]    - Create centered pane with margins
+#   tmux-margins destroy [PANE_ID]   - Remove margins, restore full pane
+#   tmux-margins equalize [PANE_ID]  - Adjust margins to fit current width
+#   tmux-margins help                - Show this help
+#
+# Environment variables:
+#   TMUX_M_COLUMNS  - Width of center pane (default: 80)
+#   TMUX_M_COMMAND  - Command to run in margin panes (default: true)
+
+set -e
+
+readonly SCRIPT_NAME="$(basename "$0")"
+PANE="${2:-$TMUX_PANE}"
+CENTER_WIDTH="${TMUX_M_COLUMNS:-80}"
+MARGIN_CMD="${TMUX_M_COMMAND:-true}"
+ACTION="${1:-create}"
+
+# Internal
+TOOL="$0"
+PATTERN=" '$TOOL' sleep "
+PATTERN_LEFT="$PATTERN'${PANE}' left"
+PATTERN_RIGHT="$PATTERN'${PANE}' right"
+COMMAND_LEFT="TMUX_M_COMMAND='$MARGIN_CMD' '$TOOL' sleep '$PANE' left"
+COMMAND_RIGHT="TMUX_M_COMMAND='$MARGIN_CMD' '$TOOL' sleep '$PANE' right"
+
+#
+# Utility
+#
+
+die() {
+    printf '%s: %s\n' "$SCRIPT_NAME" "$1" >&2
+    exit 1
+}
+
+info() {
+    printf '%s: %s\n' "$SCRIPT_NAME" "$1"
+}
+
+show_help() {
+    cat <<'EOF'
+tmux-margins - Centered pane with side margins
+
+USAGE:
+    tmux-margins create [PANE_ID]    Create centered pane
+    tmux-margins destroy [PANE_ID]   Remove margins
+    tmux-margins equalize [PANE_ID]  Equalize margins
+    tmux-margins help                Show this help
+
+ENVIRONMENT:
+    TMUX_M_COLUMNS   Width of center pane (default: 80)
+    TMUX_M_COMMAND   Command for margins (default: true)
+
+EXAMPLES:
+    tmux-margins create                    # 80-column centered pane
+    TMUX_M_COLUMNS=100 tmux-margins create # 100-column centered pane
+    tmux-margins destroy                   # Remove margins
+
+When created, pane borders are colored to blend with the background.
+When destroyed, borders are restored to default colors.
+EOF
+}
+
+#
+# Tmux queries
+#
+
+pane_is_margin() {
+    tmux display-message -p -t "$PANE" '#{pane_start_command}' 2>/dev/null | grep -qF "$PATTERN" && return 0 || return 1
+}
+
+session_exists() {
+    tmux has-session -t "$PANE" 2>/dev/null
+}
+
+get_bg_color() {
+    # Try to get the terminal background color, fall back to dark gray
+    tmux display-message -p -t "$PANE" '#{pane_bg}' 2>/dev/null || echo "colour232"
+}
+
+find_margins() {
+    PANE_LEFT="$(tmux list-panes -F "#{pane_id} #{pane_start_command}" 2>/dev/null | \
+        grep -F "$PATTERN_LEFT" | head -n 1 | cut -d ' ' -f 1)" || PANE_LEFT=""
+    PANE_RIGHT="$(tmux list-panes -F "#{pane_id} #{pane_start_command}" 2>/dev/null | \
+        grep -F "$PATTERN_RIGHT" | head -n 1 | cut -d ' ' -f 1)" || PANE_RIGHT=""
+}
+
+find_geometry() {
+    local width_left=0
+    local width_right=0
+    local border=0
+
+    if [ -n "$PANE_LEFT" ]; then
+        width_left=$(tmux display-message -p -t "$PANE_LEFT" '#{pane_width}' 2>/dev/null || echo 0)
+        border=$((border + 1))
+    fi
+
+    if [ -n "$PANE_RIGHT" ]; then
+        width_right=$(tmux display-message -p -t "$PANE_RIGHT" '#{pane_width}' 2>/dev/null || echo 0)
+        border=$((border + 1))
+    fi
+
+    PANE_WIDTH_CENTER=$(tmux display-message -p -t "$PANE" '#{pane_width}' 2>/dev/null || echo 0)
+    TOTAL_WIDTH=$((PANE_WIDTH_CENTER + width_left + width_right + border))
+
+    # Don't request more than available
+    if [ $((CENTER_WIDTH + 5)) -ge "$TOTAL_WIDTH" ]; then
+        CENTER_WIDTH="$TOTAL_WIDTH"
+    fi
+}
+
+#
+# Operations
+#
+
+hide_pane_borders() {
+    local pane="$1"
+    local color="$2"
+    local window="${pane%.*}"
+
+    # Set borders to match background: use the color for both fg and bg
+    # This makes the border character invisible against the background
+    tmux set-option -t "$window" pane-border-style "fg=$color,bg=$color" 2>/dev/null || true
+    tmux set-option -t "$window" pane-active-border-style "fg=$color,bg=$color" 2>/dev/null || true
+}
+
+create_margins() {
+    [ -n "$PANE" ] || die "No pane specified"
+    session_exists || die "Session not found"
+    pane_is_margin && die "Already running in a margin pane"
+
+    find_margins
+    find_geometry
+
+    local width_left=$(( (TOTAL_WIDTH - CENTER_WIDTH - 2) / 2 ))
+    [ "$width_left" -gt 2 ] || width_left=2
+
+    if [ -n "$PANE_LEFT" ]; then
+        tmux resize-pane -t "$PANE_LEFT" -x "$width_left" 2>/dev/null || true
+    else
+        tmux split-window -hdbl "$width_left" -t "$PANE" "$COMMAND_LEFT" 2>/dev/null || die "Failed to create left margin"
+    fi
+
+    local width_right=$(( TOTAL_WIDTH - CENTER_WIDTH - width_left - 2 ))
+    [ "$width_right" -gt 2 ] || width_right=2
+
+    if [ -n "$PANE_RIGHT" ]; then
+        tmux resize-pane -t "$PANE_RIGHT" -x "$width_right" 2>/dev/null || true
+    else
+        tmux split-window -hdl "$width_right" -t "$PANE" "$COMMAND_RIGHT" 2>/dev/null || die "Failed to create right margin"
+    fi
+
+    # Color the borders to hide them
+    local bg_color
+    bg_color=$(get_bg_color)
+
+    if [ -n "$PANE_LEFT" ]; then
+        hide_pane_borders "$PANE_LEFT" "$bg_color"
+    fi
+
+    if [ -n "$PANE_RIGHT" ]; then
+        hide_pane_borders "$PANE_RIGHT" "$bg_color"
+    fi
+
+    info "Centered pane created: $CENTER_WIDTH columns (borders hidden)"
+}
+
+destroy_margins() {
+    [ -n "$PANE" ] || die "No pane specified"
+    session_exists || die "Session not found"
+
+    find_margins
+
+    # Restore standard border colors at window level
+    local window="${PANE%.*}"
+    tmux set-option -t "$window" pane-border-style "default" 2>/dev/null || true
+    tmux set-option -t "$window" pane-active-border-style "default" 2>/dev/null || true
+
+    if [ -n "$PANE_LEFT" ]; then
+        tmux kill-pane -t "$PANE_LEFT" 2>/dev/null || true
+    fi
+
+    if [ -n "$PANE_RIGHT" ]; then
+        tmux kill-pane -t "$PANE_RIGHT" 2>/dev/null || true
+    fi
+
+    info "Margins removed, borders restored"
+}
+
+equalize_margins() {
+    [ -n "$PANE" ] || die "No pane specified"
+    session_exists || die "Session not found"
+
+    find_margins
+    find_geometry
+
+    CENTER_WIDTH=$PANE_WIDTH_CENTER
+    if [ "$CENTER_WIDTH" -lt "$TOTAL_WIDTH" ]; then
+        create_margins
+    fi
+}
+
+#
+# Main
+#
+
+case "$ACTION" in
+    create | c | "")
+        create_margins
+        ;;
+    destroy | d)
+        destroy_margins
+        ;;
+    equalize | e)
+        equalize_margins
+        ;;
+    sleep)
+        # This runs inside the margin panes to keep them alive
+        # Triggered when the margin pane is created
+        trap 'exit 0' INT TERM
+        while true; do
+            eval "$MARGIN_CMD" 2>/dev/null &
+            wait "$!" 2>/dev/null || true
+            sleep 1
+        done
+        ;;
+    help | -h | --help)
+        show_help
+        exit 0
+        ;;
+    *)
+        die "Unknown action: $ACTION. Use 'help' for usage."
+        ;;
+esac
