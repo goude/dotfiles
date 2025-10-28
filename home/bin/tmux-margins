@@ -79,8 +79,21 @@ session_exists() {
 }
 
 get_bg_color() {
-    # Try to get the terminal background color, fall back to dark gray
-    tmux display-message -p -t "$PANE" '#{pane_bg}' 2>/dev/null || echo "colour232"
+    # Try to get the status bar background (most reliable)
+    local color
+    color=$(tmux display-message -p '#{status-bg}' 2>/dev/null)
+    
+    # If that fails, try pane background
+    if [ -z "$color" ] || [ "$color" = "default" ]; then
+        color=$(tmux display-message -p -t "$PANE" '#{pane_bg}' 2>/dev/null)
+    fi
+    
+    # Final fallback to match your config's bg1 color
+    if [ -z "$color" ] || [ "$color" = "default" ]; then
+        color="colour237"
+    fi
+    
+    echo "$color"
 }
 
 find_margins() {
@@ -154,6 +167,9 @@ create_margins() {
     else
         tmux split-window -hdl "$width_right" -t "$PANE" "$COMMAND_RIGHT" 2>/dev/null || die "Failed to create right margin"
     fi
+
+    # Re-find margins after creation (they now exist)
+    find_margins
 
     # Color the borders to hide them
     local bg_color
