@@ -4,6 +4,13 @@ if true then
 
     { "jalvesaq/Nvim-R" },
 
+    {
+      "andrewferrier/wrapping.nvim",
+      config = function()
+        require("wrapping").setup()
+      end,
+    },
+
     -- Trying to enable emoji : completion in nvim-cmp but failed thus far
     -- {
     --   "hrsh7th/nvim-cmp",
