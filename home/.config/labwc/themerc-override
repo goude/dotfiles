@@ -5,3 +5,21 @@ window.inactive.shadow.color=#00000060
 window.active.shadow.offset.x=0
 window.active.shadow.offset.y=6
 
+window.active.label.bg:           flat solid #0a0a0a
+window.active.label.text.color:   #ffffff
+window.inactive.label.bg:         flat solid #2a2a2a
+window.inactive.label.text.color: #aaaaaa
+
+# Add a gloss-like horizontal highlight
+window.active.title.bg:           gradient vertical
+window.active.title.bg.color:     #111111
+window.active.title.bg.colorTo:   #1e1e1e
+
+window.inactive.title.bg:         gradient vertical
+window.inactive.title.bg.color:   #1b1b1b
+window.inactive.title.bg.colorTo: #2a2a2a
+
+# Borders
+border.width: 1
+border.color: #000000
+
