@@ -1,58 +1,58 @@
 #!/usr/bin/env bash
-# Copy to clipboard — Wayland, macOS, X11, WSL, etc.
-
 set -euo pipefail
-log() { echo "[copyclip] $*" >&2; }
 
-# Environment detection
-is_wayland() { [[ -n "${WAYLAND_DISPLAY:-}" && -S "/run/user/$(id -u)/${WAYLAND_DISPLAY}" ]]; }
-is_x11() { [[ -n "${DISPLAY:-}" ]]; }
+# Program used to copy to clipboard. Override with: COP_CMD="..." cop ...
+COP_CMD="${COP_CMD:-pbcopy}"
 
-# Ordered list of candidates
-CLIP_CMDS=(
-  wl-copy
-  pbcopy
-  clip.exe
-  xclip
-  xsel
-  termux-clipboard-set
-  putclip
-)
+GREEN='\033[32m'
+CYAN='\033[36m'
+BOLD='\033[1m'
+RESET='\033[0m'
 
-find_clip_cmd() {
-  for cmd in "${CLIP_CMDS[@]}"; do
-    command -v "$cmd" >/dev/null 2>&1 || continue
+mode=""
+bytes=0
 
-    case "$cmd" in
-    wl-copy) is_wayland || continue ;;
-    xclip | xsel) is_x11 || continue ;;
-    esac
-
-    echo "$cmd"
-    return 0
-  done
-  return 1
+copy_from_stdin() {
+  mode="stdin"
+  # Read all stdin once, copy, and count bytes.
+  # This keeps behavior consistent whether input is piped or redirected.
+  local data
+  data="$(cat)"
+  bytes=$(printf "%s" "$data" | wc -c | tr -d ' ')
+  printf "%s" "$data" | "$COP_CMD"
 }
 
-main() {
-  if ! clip_cmd=$(find_clip_cmd); then
-    log "Error: no working clipboard utility found (checked: ${CLIP_CMDS[*]})"
-    exit 1
-  fi
-
-  log "Using clipboard command: $clip_cmd"
-
-  case "$clip_cmd" in
-  wl-copy | pbcopy | clip.exe | termux-clipboard-set | putclip)
-    "$clip_cmd" "$@"
-    ;;
-  xclip)
-    "$clip_cmd" -selection clipboard "$@"
-    ;;
-  xsel)
-    "$clip_cmd" --clipboard --input "$@"
-    ;;
-  esac
+copy_from_files() {
+  mode="files"
+  # Concatenate all files and copy, also count bytes.
+  local data
+  data="$(cat -- "$@")"
+  bytes=$(printf "%s" "$data" | wc -c | tr -d ' ')
+  printf "%s" "$data" | "$COP_CMD"
 }
 
-main "$@"
+# Decide mode:
+# - If stdin is not a TTY, something is piped or redirected: use stdin mode.
+# - Otherwise, if there are args, treat them as files.
+# - If neither, show a short usage message.
+if ! [ -t 0 ]; then
+  # stdin has data (pipe or redirection)
+  copy_from_stdin
+elif [ "$#" -gt 0 ]; then
+  copy_from_files "$@"
+else
+  echo "Usage:"
+  echo "  some_command | cop"
+  echo "  cop < file.txt"
+  echo "  cop file1.txt [file2.txt ...]"
+  exit 1
+fi
+
+# Friendly feedback
+if [ "$mode" = "stdin" ]; then
+  # stdin mode (pipe or redirection)
+  printf "📋 ${BOLD}${GREEN}Copied${RESET} from ${CYAN}stdin${RESET} (%s byte(s)).\n" "$bytes"
+else
+  # files mode
+  printf "📋 ${BOLD}${GREEN}Copied${RESET} from ${CYAN}files${RESET} (%s file(s), %s byte(s)).\n" "$#" "$bytes"
+fi

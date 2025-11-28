@@ -2,11 +2,22 @@
 # Paste from clipboard — Wayland, macOS, X11, WSL, etc.
 
 set -euo pipefail
-log() { echo "[pasteclip] $*" >&2; }
+
+# Colors (same style family as `cop`)
+GREEN='\033[32m'
+CYAN='\033[36m'
+BOLD='\033[1m'
+RESET='\033[0m'
+RED='\033[31m'
+
+log() {
+  # For errors and diagnostics
+  printf "📋 ${BOLD}${RED}[pasteclip]${RESET} %s\n" "$*" >&2
+}
 
 # Environment detection
 is_wayland() { [[ -n "${WAYLAND_DISPLAY:-}" && -S "/run/user/$(id -u)/${WAYLAND_DISPLAY}" ]]; }
-is_x11() { [[ -n "${DISPLAY:-}" ]]; }
+is_x11()     { [[ -n "${DISPLAY:-}" ]]; }
 
 # Ordered list of candidate paste commands
 PASTE_CMDS=(
@@ -24,8 +35,8 @@ find_paste_cmd() {
     command -v "$cmd" >/dev/null 2>&1 || continue
 
     case "$cmd" in
-    wl-paste) is_wayland || continue ;;
-    xclip | xsel) is_x11 || continue ;;
+      wl-paste) is_wayland || continue ;;
+      xclip | xsel) is_x11 || continue ;;
     esac
 
     echo "$cmd"
@@ -40,22 +51,25 @@ main() {
     exit 1
   fi
 
-  log "Using paste command: $paste_cmd"
-
+  # Behaviour unchanged: just dump clipboard to stdout
   case "$paste_cmd" in
-  wl-paste | pbpaste | termux-clipboard-get | getclip)
-    "$paste_cmd" "$@"
-    ;;
-  powershell.exe)
-    "$paste_cmd" -Command "Get-Clipboard"
-    ;;
-  xclip)
-    "$paste_cmd" -selection clipboard -o "$@"
-    ;;
-  xsel)
-    "$paste_cmd" --clipboard --output "$@"
-    ;;
+    wl-paste | pbpaste | termux-clipboard-get | getclip)
+      "$paste_cmd" "$@"
+      ;;
+    powershell.exe)
+      "$paste_cmd" -Command "Get-Clipboard"
+      ;;
+    xclip)
+      "$paste_cmd" -selection clipboard -o "$@"
+      ;;
+    xsel)
+      "$paste_cmd" --clipboard --output "$@"
+      ;;
   esac
+
+  # Friendly status line (stderr), in the same family as `cop`
+  printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}clipboard${RESET} via ${CYAN}%s${RESET} (mode: clipboard).\n" \
+    "$paste_cmd" >&2
 }
 
 main "$@"
