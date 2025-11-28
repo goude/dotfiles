@@ -8,6 +8,7 @@ GREEN='\033[32m'
 CYAN='\033[36m'
 BOLD='\033[1m'
 RESET='\033[0m'
+YELLOW='\033[33m'
 
 mode=""
 bytes=0
@@ -31,6 +32,18 @@ copy_from_files() {
   printf "%s" "$data" | "$COP_CMD"
 }
 
+show_usage() {
+  >&2 printf "\n📋 ${BOLD}${GREEN}cop${RESET} ${CYAN}(clipboard helper)${RESET}\n"
+  >&2 printf "   Copy text to the system clipboard.\n\n"
+  >&2 printf "   ${YELLOW}Usage:${RESET}\n"
+  >&2 printf "     • Pipe or redirect:\n"
+  >&2 printf "         some_command | cop\n"
+  >&2 printf "         cop < file.txt\n\n"
+  >&2 printf "     • Concatenate files:\n"
+  >&2 printf "         cop file1.txt [file2.txt ...]\n\n"
+  >&2 printf "   Mode is auto detected based on stdin and arguments.\n\n"
+}
+
 # Decide mode:
 # - If stdin is not a TTY, something is piped or redirected: use stdin mode.
 # - Otherwise, if there are args, treat them as files.
@@ -41,10 +54,7 @@ if ! [ -t 0 ]; then
 elif [ "$#" -gt 0 ]; then
   copy_from_files "$@"
 else
-  echo "Usage:"
-  echo "  some_command | cop"
-  echo "  cop < file.txt"
-  echo "  cop file1.txt [file2.txt ...]"
+  show_usage
   exit 1
 fi
 
