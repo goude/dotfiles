@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Clipboard helper: copy (default), paste (-p), optional kvdb sync (-n).
+# Clipboard helper: copy (default), paste (-p), optional kvdb sync (-n) and encryption (-e).
 
 set -euo pipefail
 
 COP_CMD="${COP_CMD:-pbcopy}"
+
+# kvdb.io bucket id; this is just an opaque identifier, not a privileged secret.
+KVDB_BUCKET="R8QZfYqViwynv3kxWRyjns"
 
 GREEN=$'\033[32m'
 CYAN=$'\033[36m'
@@ -15,32 +18,39 @@ RESET=$'\033[0m'
 mode=""
 bytes=0
 LAST_PAYLOAD=""
+PASTE_USED=""
 
 log() {
-  printf "📋 %s[clip]%s %s\n" "$BOLD$RED" "$RESET" "$*" >&2
+  printf "📋 %s[cop]%s %s\n" "$BOLD$RED" "$RESET" "$*" >&2
 }
 
 show_usage() {
   cat >&2 <<EOF
 
-📋 ${BOLD}${GREEN}clip${RESET} ${CYAN}(clipboard helper)${RESET}
-   Copy to or paste from the system clipboard, with optional kvdb sync.
+📋 ${BOLD}${GREEN}cop${RESET} ${CYAN}(clipboard helper)${RESET}
+   Copy to or paste from the system clipboard, with optional kvdb sync and encryption.
 
    ${YELLOW}Usage:${RESET}
      Copy (default):
-       some_command | clip
-       clip < file.txt
-       clip file1.txt [file2.txt ...]
+       some_command | cop
+       cop < file.txt
+       cop file1.txt [file2.txt ...]
 
-     Paste from local clipboard:
-       clip -p
+     Paste from clipboard:
+       cop -p
 
-     Network sync via kvdb.io (requires KVDB_BUCKET):
+     Network sync via kvdb.io (bucket fixed in script):
        Copy + sync:
-         clip -n            # from stdin
-         clip -n file.txt
+         cop -n            # from stdin
+         cop -n file.txt
        Paste from kvdb (key "cop"):
-         clip -p -n
+         cop -p -n
+
+     Encryption (local and/or kvdb) using openssl and COP_SECRET:
+       Copy encrypted:
+         cop -e            # stdin -> encrypted in clipboard (and kvdb if -n)
+       Paste encrypted:
+         cop -p -e         # clipboard/kvdb -> decrypted to stdout
 
    Mode is auto-detected for copy based on stdin and arguments.
 EOF
@@ -52,7 +62,6 @@ copy_from_stdin() {
   data="$(cat)"
   bytes=$(printf "%s" "$data" | wc -c | tr -d ' ')
   LAST_PAYLOAD="$data"
-  printf "%s" "$data" | "$COP_CMD"
 }
 
 copy_from_files() {
@@ -61,7 +70,6 @@ copy_from_files() {
   data="$(cat -- "$@")"
   bytes=$(printf "%s" "$data" | wc -c | tr -d ' ')
   LAST_PAYLOAD="$data"
-  printf "%s" "$data" | "$COP_CMD"
 }
 
 is_wayland() { [[ -n "${WAYLAND_DISPLAY:-}" && -S "/run/user/$(id -u)/${WAYLAND_DISPLAY}" ]]; }
@@ -90,80 +98,108 @@ find_paste_cmd() {
   return 1
 }
 
-require_kvdb() {
-  if [[ -z "${KVDB_BUCKET:-}" ]]; then
-    log "KVDB_BUCKET not set; -n requires a kvdb.io bucket id"
+get_local_clipboard() {
+  local paste_cmd data
+  if ! paste_cmd=$(find_paste_cmd); then
+    log "Error: no working paste utility found (checked: ${PASTE_CMDS[*]})"
     exit 1
   fi
+  PASTE_USED="$paste_cmd"
+  case "$paste_cmd" in
+    wl-paste | pbpaste | termux-clipboard-get | getclip)
+      data="$("$paste_cmd")"
+      ;;
+    powershell.exe)
+      data="$("$paste_cmd" -Command "Get-Clipboard")"
+      ;;
+    xclip)
+      data="$("$paste_cmd" -selection clipboard -o)"
+      ;;
+    xsel)
+      data="$("$paste_cmd" --clipboard --output)"
+      ;;
+  esac
+  printf "%s" "$data"
 }
 
 send_to_kvdb() {
-  require_kvdb
   local data=$1
   curl -fsS -X POST -d "$data" "https://kvdb.io/${KVDB_BUCKET}/cop" >/dev/null || {
     log "Failed to sync to kvdb.io bucket '${KVDB_BUCKET}'"
     return 1
   }
   printf "📋 ${BOLD}${GREEN}Synced${RESET} to ${CYAN}kvdb.io${RESET} (bucket: %s, key: cop).\n" \
-    "${KVDB_BUCKET}" >&2
+    "$KVDB_BUCKET" >&2
 }
 
 fetch_from_kvdb() {
-  require_kvdb
   curl -fsS "https://kvdb.io/${KVDB_BUCKET}/cop"
+}
+
+ensure_crypto() {
+  if ! command -v openssl >/dev/null 2>&1; then
+    log "Error: openssl not found; -e cannot be used on this system"
+    exit 1
+  fi
+  if [[ -z "${COP_SECRET:-}" ]]; then
+    log "Error: COP_SECRET not set; -e requires a symmetric secret in COP_SECRET"
+    exit 1
+  fi
+}
+
+encrypt_data() {
+  ensure_crypto
+  # stdin -> base64-encoded AES-256-CBC ciphertext
+  openssl enc -aes-256-cbc -salt -pass env:COP_SECRET -base64
+}
+
+decrypt_data() {
+  ensure_crypto
+  # stdin (base64 ciphertext) -> plaintext
+  openssl enc -d -aes-256-cbc -salt -pass env:COP_SECRET -base64
 }
 
 paste_clipboard() {
   local use_network=$1
+  local encrypt=$2
+  local raw out
 
   if (( use_network )); then
-    local data
-    data="$(fetch_from_kvdb)"
-    printf "%s" "$data"
+    raw="$(fetch_from_kvdb)"
+    # Mirror the kvdb content into local clipboard (raw, possibly ciphertext).
     if command -v "$COP_CMD" >/dev/null 2>&1; then
-      printf "%s" "$data" | "$COP_CMD" || true
+      printf "%s" "$raw" | "$COP_CMD" || true
     fi
     printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}kvdb.io${RESET} (bucket: %s, key: cop).\n" \
-      "${KVDB_BUCKET}" >&2
-    return 0
+      "$KVDB_BUCKET" >&2
+  else
+    raw="$(get_local_clipboard)"
+    printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}clipboard${RESET} via ${CYAN}%s${RESET}.\n" \
+      "$PASTE_USED" >&2
   fi
 
-  if ! paste_cmd=$(find_paste_cmd); then
-    log "Error: no working paste utility found (checked: ${PASTE_CMDS[*]})"
-    exit 1
+  if (( encrypt )); then
+    out="$(printf "%s" "$raw" | decrypt_data)"
+  else
+    out="$raw"
   fi
 
-  case "$paste_cmd" in
-    wl-paste | pbpaste | termux-clipboard-get | getclip)
-      "$paste_cmd"
-      ;;
-    powershell.exe)
-      "$paste_cmd" -Command "Get-Clipboard"
-      ;;
-    xclip)
-      "$paste_cmd" -selection clipboard -o
-      ;;
-    xsel)
-      "$paste_cmd" --clipboard --output
-      ;;
-  esac
-
-  printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}clipboard${RESET} via ${CYAN}%s${RESET} (mode: clipboard).\n" \
-    "$paste_cmd" >&2
+  printf "%s" "$out"
 }
 
 main() {
   local paste=0
   local network=0
+  local encrypt=0
 
-  # If invoked as "pas", act as if -p was passed.
+  # If invoked as "pas" (symlink), behave as if "-p" was passed.
   local script_name
   script_name=$(basename "$0")
   if [[ "$script_name" == "pas" ]]; then
     set -- -p "$@"
   fi
 
-  # Simple option parsing
+  # Parse options
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -h|--help)
@@ -176,6 +212,10 @@ main() {
         ;;
       -n)
         network=1
+        shift
+        ;;
+      -e)
+        encrypt=1
         shift
         ;;
       --)
@@ -194,11 +234,11 @@ main() {
   done
 
   if (( paste )); then
-    paste_clipboard "$network"
+    paste_clipboard "$network" "$encrypt"
     exit 0
   fi
 
-  # Copy mode
+  # Copy mode: fill LAST_PAYLOAD
   if ! [ -t 0 ]; then
     copy_from_stdin
   elif [ "$#" -gt 0 ]; then
@@ -208,8 +248,16 @@ main() {
     exit 1
   fi
 
+  local payload="$LAST_PAYLOAD"
+
+  if (( encrypt )); then
+    payload="$(printf "%s" "$payload" | encrypt_data)"
+  fi
+
+  printf "%s" "$payload" | "$COP_CMD"
+
   if (( network )); then
-    send_to_kvdb "$LAST_PAYLOAD" || true
+    send_to_kvdb "$payload" || true
   fi
 
   if [ "$mode" = "stdin" ]; then
