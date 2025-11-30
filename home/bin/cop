@@ -6,7 +6,7 @@ set -euo pipefail
 COP_CMD="${COP_CMD:-pbcopy}"
 
 # kvdb.io bucket id; this is just an opaque identifier, not a privileged secret.
-KVDB_BUCKET="R8QZfYqViwynv3kxWRyjns"
+KVDB_BUCKET="B2XJb9EbsXQkxxhvgZmaSp"
 
 GREEN=$'\033[32m'
 CYAN=$'\033[36m'
@@ -73,7 +73,7 @@ copy_from_files() {
 }
 
 is_wayland() { [[ -n "${WAYLAND_DISPLAY:-}" && -S "/run/user/$(id -u)/${WAYLAND_DISPLAY}" ]]; }
-is_x11()     { [[ -n "${DISPLAY:-}" ]]; }
+is_x11() { [[ -n "${DISPLAY:-}" ]]; }
 
 PASTE_CMDS=(
   wl-paste
@@ -89,8 +89,8 @@ find_paste_cmd() {
   for cmd in "${PASTE_CMDS[@]}"; do
     command -v "$cmd" >/dev/null 2>&1 || continue
     case "$cmd" in
-      wl-paste) is_wayland || continue ;;
-      xclip | xsel) is_x11 || continue ;;
+    wl-paste) is_wayland || continue ;;
+    xclip | xsel) is_x11 || continue ;;
     esac
     echo "$cmd"
     return 0
@@ -106,18 +106,18 @@ get_local_clipboard() {
   fi
   PASTE_USED="$paste_cmd"
   case "$paste_cmd" in
-    wl-paste | pbpaste | termux-clipboard-get | getclip)
-      data="$("$paste_cmd")"
-      ;;
-    powershell.exe)
-      data="$("$paste_cmd" -Command "Get-Clipboard")"
-      ;;
-    xclip)
-      data="$("$paste_cmd" -selection clipboard -o)"
-      ;;
-    xsel)
-      data="$("$paste_cmd" --clipboard --output)"
-      ;;
+  wl-paste | pbpaste | termux-clipboard-get | getclip)
+    data="$("$paste_cmd")"
+    ;;
+  powershell.exe)
+    data="$("$paste_cmd" -Command "Get-Clipboard")"
+    ;;
+  xclip)
+    data="$("$paste_cmd" -selection clipboard -o)"
+    ;;
+  xsel)
+    data="$("$paste_cmd" --clipboard --output)"
+    ;;
   esac
   printf "%s" "$data"
 }
@@ -164,7 +164,7 @@ paste_clipboard() {
   local encrypt=$2
   local raw out
 
-  if (( use_network )); then
+  if ((use_network)); then
     raw="$(fetch_from_kvdb)"
     # Mirror the kvdb content into local clipboard (raw, possibly ciphertext).
     if command -v "$COP_CMD" >/dev/null 2>&1; then
@@ -178,7 +178,7 @@ paste_clipboard() {
       "$PASTE_USED" >&2
   fi
 
-  if (( encrypt )); then
+  if ((encrypt)); then
     out="$(printf "%s" "$raw" | decrypt_data)"
   else
     out="$raw"
@@ -202,38 +202,38 @@ main() {
   # Parse options
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -h|--help)
-        show_usage
-        exit 0
-        ;;
-      -p)
-        paste=1
-        shift
-        ;;
-      -n)
-        network=1
-        shift
-        ;;
-      -e)
-        encrypt=1
-        shift
-        ;;
-      --)
-        shift
-        break
-        ;;
-      -*)
-        log "Unknown option: $1"
-        show_usage
-        exit 1
-        ;;
-      *)
-        break
-        ;;
+    -h | --help)
+      show_usage
+      exit 0
+      ;;
+    -p)
+      paste=1
+      shift
+      ;;
+    -n)
+      network=1
+      shift
+      ;;
+    -e)
+      encrypt=1
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      log "Unknown option: $1"
+      show_usage
+      exit 1
+      ;;
+    *)
+      break
+      ;;
     esac
   done
 
-  if (( paste )); then
+  if ((paste)); then
     paste_clipboard "$network" "$encrypt"
     exit 0
   fi
@@ -250,13 +250,13 @@ main() {
 
   local payload="$LAST_PAYLOAD"
 
-  if (( encrypt )); then
+  if ((encrypt)); then
     payload="$(printf "%s" "$payload" | encrypt_data)"
   fi
 
   printf "%s" "$payload" | "$COP_CMD"
 
-  if (( network )); then
+  if ((network)); then
     send_to_kvdb "$payload" || true
   fi
 
