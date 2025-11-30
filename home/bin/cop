@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Clipboard helper: copy (default) and paste (-p) for multiple platforms.
-# If invoked as "pas" (symlink), behaves as if "-p" was passed.
+# Clipboard helper: copy (default), paste (-p), optional kvdb sync (-n).
 
 set -euo pipefail
 
@@ -15,16 +14,17 @@ RESET=$'\033[0m'
 
 mode=""
 bytes=0
+LAST_PAYLOAD=""
 
 log() {
-  printf "📋 ${BOLD}${RED}[clip]${RESET} %s\n" "$*" >&2
+  printf "📋 %s[clip]%s %s\n" "$BOLD$RED" "$RESET" "$*" >&2
 }
 
 show_usage() {
   cat >&2 <<EOF
 
 📋 ${BOLD}${GREEN}clip${RESET} ${CYAN}(clipboard helper)${RESET}
-   Copy to or paste from the system clipboard.
+   Copy to or paste from the system clipboard, with optional kvdb sync.
 
    ${YELLOW}Usage:${RESET}
      Copy (default):
@@ -32,8 +32,15 @@ show_usage() {
        clip < file.txt
        clip file1.txt [file2.txt ...]
 
-     Paste:
+     Paste from local clipboard:
        clip -p
+
+     Network sync via kvdb.io (requires KVDB_BUCKET):
+       Copy + sync:
+         clip -n            # from stdin
+         clip -n file.txt
+       Paste from kvdb (key "cop"):
+         clip -p -n
 
    Mode is auto-detected for copy based on stdin and arguments.
 EOF
@@ -44,6 +51,7 @@ copy_from_stdin() {
   local data
   data="$(cat)"
   bytes=$(printf "%s" "$data" | wc -c | tr -d ' ')
+  LAST_PAYLOAD="$data"
   printf "%s" "$data" | "$COP_CMD"
 }
 
@@ -52,11 +60,12 @@ copy_from_files() {
   local data
   data="$(cat -- "$@")"
   bytes=$(printf "%s" "$data" | wc -c | tr -d ' ')
+  LAST_PAYLOAD="$data"
   printf "%s" "$data" | "$COP_CMD"
 }
 
 is_wayland() { [[ -n "${WAYLAND_DISPLAY:-}" && -S "/run/user/$(id -u)/${WAYLAND_DISPLAY}" ]]; }
-is_x11() { [[ -n "${DISPLAY:-}" ]]; }
+is_x11()     { [[ -n "${DISPLAY:-}" ]]; }
 
 PASTE_CMDS=(
   wl-paste
@@ -72,8 +81,8 @@ find_paste_cmd() {
   for cmd in "${PASTE_CMDS[@]}"; do
     command -v "$cmd" >/dev/null 2>&1 || continue
     case "$cmd" in
-    wl-paste) is_wayland || continue ;;
-    xclip | xsel) is_x11 || continue ;;
+      wl-paste) is_wayland || continue ;;
+      xclip | xsel) is_x11 || continue ;;
     esac
     echo "$cmd"
     return 0
@@ -81,25 +90,62 @@ find_paste_cmd() {
   return 1
 }
 
+require_kvdb() {
+  if [[ -z "${KVDB_BUCKET:-}" ]]; then
+    log "KVDB_BUCKET not set; -n requires a kvdb.io bucket id"
+    exit 1
+  fi
+}
+
+send_to_kvdb() {
+  require_kvdb
+  local data=$1
+  curl -fsS -X POST -d "$data" "https://kvdb.io/${KVDB_BUCKET}/cop" >/dev/null || {
+    log "Failed to sync to kvdb.io bucket '${KVDB_BUCKET}'"
+    return 1
+  }
+  printf "📋 ${BOLD}${GREEN}Synced${RESET} to ${CYAN}kvdb.io${RESET} (bucket: %s, key: cop).\n" \
+    "${KVDB_BUCKET}" >&2
+}
+
+fetch_from_kvdb() {
+  require_kvdb
+  curl -fsS "https://kvdb.io/${KVDB_BUCKET}/cop"
+}
+
 paste_clipboard() {
+  local use_network=$1
+
+  if (( use_network )); then
+    local data
+    data="$(fetch_from_kvdb)"
+    printf "%s" "$data"
+    if command -v "$COP_CMD" >/dev/null 2>&1; then
+      printf "%s" "$data" | "$COP_CMD" || true
+    fi
+    printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}kvdb.io${RESET} (bucket: %s, key: cop).\n" \
+      "${KVDB_BUCKET}" >&2
+    return 0
+  fi
+
   if ! paste_cmd=$(find_paste_cmd); then
     log "Error: no working paste utility found (checked: ${PASTE_CMDS[*]})"
     exit 1
   fi
 
   case "$paste_cmd" in
-  wl-paste | pbpaste | termux-clipboard-get | getclip)
-    "$paste_cmd"
-    ;;
-  powershell.exe)
-    "$paste_cmd" -Command "Get-Clipboard"
-    ;;
-  xclip)
-    "$paste_cmd" -selection clipboard -o
-    ;;
-  xsel)
-    "$paste_cmd" --clipboard --output
-    ;;
+    wl-paste | pbpaste | termux-clipboard-get | getclip)
+      "$paste_cmd"
+      ;;
+    powershell.exe)
+      "$paste_cmd" -Command "Get-Clipboard"
+      ;;
+    xclip)
+      "$paste_cmd" -selection clipboard -o
+      ;;
+    xsel)
+      "$paste_cmd" --clipboard --output
+      ;;
   esac
 
   printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}clipboard${RESET} via ${CYAN}%s${RESET} (mode: clipboard).\n" \
@@ -107,14 +153,48 @@ paste_clipboard() {
 }
 
 main() {
-  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-    show_usage
-    exit 0
+  local paste=0
+  local network=0
+
+  # If invoked as "pas", act as if -p was passed.
+  local script_name
+  script_name=$(basename "$0")
+  if [[ "$script_name" == "pas" ]]; then
+    set -- -p "$@"
   fi
 
-  if [[ "${1:-}" == "-p" ]]; then
-    shift
-    paste_clipboard
+  # Simple option parsing
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h|--help)
+        show_usage
+        exit 0
+        ;;
+      -p)
+        paste=1
+        shift
+        ;;
+      -n)
+        network=1
+        shift
+        ;;
+      --)
+        shift
+        break
+        ;;
+      -*)
+        log "Unknown option: $1"
+        show_usage
+        exit 1
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+
+  if (( paste )); then
+    paste_clipboard "$network"
     exit 0
   fi
 
@@ -128,17 +208,15 @@ main() {
     exit 1
   fi
 
+  if (( network )); then
+    send_to_kvdb "$LAST_PAYLOAD" || true
+  fi
+
   if [ "$mode" = "stdin" ]; then
     printf "📋 ${BOLD}${GREEN}Copied${RESET} from ${CYAN}stdin${RESET} (%s byte(s)).\n" "$bytes"
   else
     printf "📋 ${BOLD}${GREEN}Copied${RESET} from ${CYAN}files${RESET} (%s file(s), %s byte(s)).\n" "$#" "$bytes"
   fi
 }
-
-# If invoked as "pas" (symlink name), behave as if "-p" was passed.
-script_name=$(basename "${0}")
-if [[ "$script_name" == "pas" ]]; then
-  set -- -p "$@"
-fi
 
 main "$@"
