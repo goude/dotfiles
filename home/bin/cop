@@ -1,22 +1,46 @@
 #!/usr/bin/env bash
+# Clipboard helper: copy (default) and paste (-p) for multiple platforms.
+# If invoked as "pas" (symlink), behaves as if "-p" was passed.
+
 set -euo pipefail
 
-# Program used to copy to clipboard. Override with: COP_CMD="..." cop ...
 COP_CMD="${COP_CMD:-pbcopy}"
 
 GREEN='\033[32m'
 CYAN='\033[36m'
+YELLOW='\033[33m'
+RED='\033[31m'
 BOLD='\033[1m'
 RESET='\033[0m'
-YELLOW='\033[33m'
 
 mode=""
 bytes=0
 
+log() {
+  printf "📋 ${BOLD}${RED}[clip]${RESET} %s\n" "$*" >&2
+}
+
+show_usage() {
+  cat >&2 <<EOF
+
+📋 ${BOLD}${GREEN}clip${RESET} ${CYAN}(clipboard helper)${RESET}
+   Copy to or paste from the system clipboard.
+
+   ${YELLOW}Usage:${RESET}
+     Copy (default):
+       some_command | clip
+       clip < file.txt
+       clip file1.txt [file2.txt ...]
+
+     Paste:
+       clip -p
+
+   Mode is auto-detected for copy based on stdin and arguments.
+EOF
+}
+
 copy_from_stdin() {
   mode="stdin"
-  # Read all stdin once, copy, and count bytes.
-  # This keeps behavior consistent whether input is piped or redirected.
   local data
   data="$(cat)"
   bytes=$(printf "%s" "$data" | wc -c | tr -d ' ')
@@ -25,44 +49,96 @@ copy_from_stdin() {
 
 copy_from_files() {
   mode="files"
-  # Concatenate all files and copy, also count bytes.
   local data
   data="$(cat -- "$@")"
   bytes=$(printf "%s" "$data" | wc -c | tr -d ' ')
   printf "%s" "$data" | "$COP_CMD"
 }
 
-show_usage() {
-  >&2 printf "\n📋 ${BOLD}${GREEN}cop${RESET} ${CYAN}(clipboard helper)${RESET}\n"
-  >&2 printf "   Copy text to the system clipboard.\n\n"
-  >&2 printf "   ${YELLOW}Usage:${RESET}\n"
-  >&2 printf "     • Pipe or redirect:\n"
-  >&2 printf "         some_command | cop\n"
-  >&2 printf "         cop < file.txt\n\n"
-  >&2 printf "     • Concatenate files:\n"
-  >&2 printf "         cop file1.txt [file2.txt ...]\n\n"
-  >&2 printf "   Mode is auto detected based on stdin and arguments.\n\n"
+is_wayland() { [[ -n "${WAYLAND_DISPLAY:-}" && -S "/run/user/$(id -u)/${WAYLAND_DISPLAY}" ]]; }
+is_x11()     { [[ -n "${DISPLAY:-}" ]]; }
+
+PASTE_CMDS=(
+  wl-paste
+  pbpaste
+  powershell.exe
+  xclip
+  xsel
+  termux-clipboard-get
+  getclip
+)
+
+find_paste_cmd() {
+  for cmd in "${PASTE_CMDS[@]}"; do
+    command -v "$cmd" >/dev/null 2>&1 || continue
+    case "$cmd" in
+      wl-paste) is_wayland || continue ;;
+      xclip | xsel) is_x11 || continue ;;
+    esac
+    echo "$cmd"
+    return 0
+  done
+  return 1
 }
 
-# Decide mode:
-# - If stdin is not a TTY, something is piped or redirected: use stdin mode.
-# - Otherwise, if there are args, treat them as files.
-# - If neither, show a short usage message.
-if ! [ -t 0 ]; then
-  # stdin has data (pipe or redirection)
-  copy_from_stdin
-elif [ "$#" -gt 0 ]; then
-  copy_from_files "$@"
-else
-  show_usage
-  exit 1
+paste_clipboard() {
+  if ! paste_cmd=$(find_paste_cmd); then
+    log "Error: no working paste utility found (checked: ${PASTE_CMDS[*]})"
+    exit 1
+  fi
+
+  case "$paste_cmd" in
+    wl-paste | pbpaste | termux-clipboard-get | getclip)
+      "$paste_cmd"
+      ;;
+    powershell.exe)
+      "$paste_cmd" -Command "Get-Clipboard"
+      ;;
+    xclip)
+      "$paste_cmd" -selection clipboard -o
+      ;;
+    xsel)
+      "$paste_cmd" --clipboard --output
+      ;;
+  esac
+
+  printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}clipboard${RESET} via ${CYAN}%s${RESET} (mode: clipboard).\n" \
+    "$paste_cmd" >&2
+}
+
+main() {
+  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    show_usage
+    exit 0
+  fi
+
+  if [[ "${1:-}" == "-p" ]]; then
+    shift
+    paste_clipboard
+    exit 0
+  fi
+
+  # Copy mode
+  if ! [ -t 0 ]; then
+    copy_from_stdin
+  elif [ "$#" -gt 0 ]; then
+    copy_from_files "$@"
+  else
+    show_usage
+    exit 1
+  fi
+
+  if [ "$mode" = "stdin" ]; then
+    printf "📋 ${BOLD}${GREEN}Copied${RESET} from ${CYAN}stdin${RESET} (%s byte(s)).\n" "$bytes"
+  else
+    printf "📋 ${BOLD}${GREEN}Copied${RESET} from ${CYAN}files${RESET} (%s file(s), %s byte(s)).\n" "$#" "$bytes"
+  fi
+}
+
+# If invoked as "pas" (symlink name), behave as if "-p" was passed.
+script_name=$(basename "${0}")
+if [[ "$script_name" == "pas" ]]; then
+  set -- -p "$@"
 fi
 
-# Friendly feedback
-if [ "$mode" = "stdin" ]; then
-  # stdin mode (pipe or redirection)
-  printf "📋 ${BOLD}${GREEN}Copied${RESET} from ${CYAN}stdin${RESET} (%s byte(s)).\n" "$bytes"
-else
-  # files mode
-  printf "📋 ${BOLD}${GREEN}Copied${RESET} from ${CYAN}files${RESET} (%s file(s), %s byte(s)).\n" "$#" "$bytes"
-fi
+main "$@"
