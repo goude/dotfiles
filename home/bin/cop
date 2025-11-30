@@ -6,7 +6,7 @@ set -euo pipefail
 COP_CMD="${COP_CMD:-pbcopy}"
 
 # kvdb.io bucket id; this is just an opaque identifier, not a privileged secret.
-KVDB_BUCKET="B2XJb9EbsXQkxxhvgZmaSp"
+KVDB_BUCKET="LStw69jq5rnxREHTe33rHv"
 
 GREEN=$'\033[32m'
 CYAN=$'\033[36m'
@@ -124,10 +124,10 @@ get_local_clipboard() {
 
 send_to_kvdb() {
   local data=$1
-  curl -fsS -X POST -d "$data" "https://kvdb.io/${KVDB_BUCKET}/cop" >/dev/null || {
+  if ! curl -fsS -X POST -d "$data" "https://kvdb.io/${KVDB_BUCKET}/cop" >/dev/null; then
     log "Failed to sync to kvdb.io bucket '${KVDB_BUCKET}'"
     return 1
-  }
+  fi
   printf "📋 ${BOLD}${GREEN}Synced${RESET} to ${CYAN}kvdb.io${RESET} (bucket: %s, key: cop).\n" \
     "$KVDB_BUCKET" >&2
 }
@@ -187,6 +187,20 @@ paste_clipboard() {
   printf "%s" "$out"
 }
 
+detect_self_overwrite() {
+  # Detect cases like: pas > cop  (stdout redirected to this script file).
+  local script_real out_real
+  script_real="$(readlink -f "$0" 2>/dev/null || echo "$0")"
+  out_real="$(readlink -f /proc/self/fd/1 2>/dev/null || true)"
+
+  if [[ -n "$out_real" && "$script_real" = "$out_real" ]]; then
+    printf "📋 ${BOLD}${RED}[cop] Refusing to overwrite running script (%s).${RESET}\n" \
+      "$script_real" >&2
+    printf "📋 Use a temp file or 'sponge' instead.\n" >&2
+    exit 1
+  fi
+}
+
 main() {
   local paste=0
   local network=0
@@ -232,6 +246,9 @@ main() {
       ;;
     esac
   done
+
+  # Refuse to stream output into our own script file.
+  detect_self_overwrite
 
   if ((paste)); then
     paste_clipboard "$network" "$encrypt"
