@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
-# Clipboard helper: copy (default), paste (-p), optional kvdb sync (-n) and encryption (-e).
+# Clipboard helper: copy (default), paste (-p), optional keyvalue sync (-n) and encryption (-e).
 
 set -euo pipefail
 
+# Program used to copy to the system clipboard. Override with COP_CMD if defined in the environment.
 COP_CMD="${COP_CMD:-pbcopy}"
 
-# kvdb.io bucket id; this is just an opaque identifier, not a privileged secret.
-KVDB_BUCKET="LStw69jq5rnxREHTe33rHv"
+# keyvalue.immanuel.co app key; this is an opaque identifier used to update/get values.
+KEYVALUE_APP_KEY="pk1vk7oj"
 
+# Predetermined key under which to store the clipboard content in the key-value service.
+KEYVALUE_KEY="cop"
+
+# ANSI colour codes (via $'\033[...') for consistent colour rendering across shells.
 GREEN=$'\033[32m'
 CYAN=$'\033[36m'
 YELLOW=$'\033[33m'
@@ -20,15 +25,16 @@ bytes=0
 LAST_PAYLOAD=""
 PASTE_USED=""
 
+# Logging helper for uniform prefix.
 log() {
   printf "📋 %s[cop]%s %s\n" "$BOLD$RED" "$RESET" "$*" >&2
 }
 
 show_usage() {
-  cat >&2 <<EOF
+  cat >&2 <<EOF_USAGE
 
 📋 ${BOLD}${GREEN}cop${RESET} ${CYAN}(clipboard helper)${RESET}
-   Copy to or paste from the system clipboard, with optional kvdb sync and encryption.
+   Copy to or paste from the system clipboard, with optional keyvalue sync and encryption.
 
    ${YELLOW}Usage:${RESET}
      Copy (default):
@@ -39,23 +45,24 @@ show_usage() {
      Paste from clipboard:
        cop -p
 
-     Network sync via kvdb.io (bucket fixed in script):
+     Network sync via keyvalue.immanuel.co (app key fixed in script):
        Copy + sync:
          cop -n            # from stdin
          cop -n file.txt
-       Paste from kvdb (key "cop"):
+       Paste from keyvalue (key "${KEYVALUE_KEY}"):
          cop -p -n
 
-     Encryption (local and/or kvdb) using openssl and COP_SECRET:
+     Encryption (local and/or keyvalue) using openssl and COP_SECRET:
        Copy encrypted:
-         cop -e            # stdin -> encrypted in clipboard (and kvdb if -n)
+         cop -e            # stdin -> encrypted in clipboard (and keyvalue if -n)
        Paste encrypted:
-         cop -p -e         # clipboard/kvdb -> decrypted to stdout
+         cop -p -e         # clipboard/keyvalue -> decrypted to stdout
 
    Mode is auto-detected for copy based on stdin and arguments.
-EOF
+EOF_USAGE
 }
 
+# Read data from stdin and record the payload.
 copy_from_stdin() {
   mode="stdin"
   local data
@@ -64,6 +71,7 @@ copy_from_stdin() {
   LAST_PAYLOAD="$data"
 }
 
+# Read data from supplied files and record the payload.
 copy_from_files() {
   mode="files"
   local data
@@ -72,9 +80,11 @@ copy_from_files() {
   LAST_PAYLOAD="$data"
 }
 
+# Environment detection helpers for X11/Wayland, used to choose paste command.
 is_wayland() { [[ -n "${WAYLAND_DISPLAY:-}" && -S "/run/user/$(id -u)/${WAYLAND_DISPLAY}" ]]; }
-is_x11() { [[ -n "${DISPLAY:-}" ]]; }
+is_x11()     { [[ -n "${DISPLAY:-}" ]]; }
 
+# Candidate commands for pasting from the system clipboard.
 PASTE_CMDS=(
   wl-paste
   pbpaste
@@ -89,8 +99,8 @@ find_paste_cmd() {
   for cmd in "${PASTE_CMDS[@]}"; do
     command -v "$cmd" >/dev/null 2>&1 || continue
     case "$cmd" in
-    wl-paste) is_wayland || continue ;;
-    xclip | xsel) is_x11 || continue ;;
+      wl-paste) is_wayland || continue ;;
+      xclip | xsel) is_x11 || continue ;;
     esac
     echo "$cmd"
     return 0
@@ -98,6 +108,7 @@ find_paste_cmd() {
   return 1
 }
 
+# Retrieve text from the local clipboard using an appropriate utility.
 get_local_clipboard() {
   local paste_cmd data
   if ! paste_cmd=$(find_paste_cmd); then
@@ -106,34 +117,155 @@ get_local_clipboard() {
   fi
   PASTE_USED="$paste_cmd"
   case "$paste_cmd" in
-  wl-paste | pbpaste | termux-clipboard-get | getclip)
-    data="$("$paste_cmd")"
-    ;;
-  powershell.exe)
-    data="$("$paste_cmd" -Command "Get-Clipboard")"
-    ;;
-  xclip)
-    data="$("$paste_cmd" -selection clipboard -o)"
-    ;;
-  xsel)
-    data="$("$paste_cmd" --clipboard --output)"
-    ;;
+    wl-paste | pbpaste | termux-clipboard-get | getclip)
+      data="$($paste_cmd)"
+      ;;
+    powershell.exe)
+      data="$($paste_cmd -Command "Get-Clipboard")"
+      ;;
+    xclip)
+      data="$($paste_cmd -selection clipboard -o)"
+      ;;
+    xsel)
+      data="$($paste_cmd --clipboard --output)"
+      ;;
   esac
   printf "%s" "$data"
 }
 
-send_to_kvdb() {
-  local data=$1
-  if ! curl -fsS -X POST -d "$data" "https://kvdb.io/${KVDB_BUCKET}/cop" >/dev/null; then
-    log "Failed to sync to kvdb.io bucket '${KVDB_BUCKET}'"
-    return 1
+# Encode data as base64 without newlines.  Uses the available base64 implementation.
+base64_encode() {
+  local input
+  input=$(cat)
+  if command -v base64 >/dev/null 2>&1; then
+    if encoded=$(printf "%s" "$input" | base64 --wrap=0 2>/dev/null); then
+      printf "%s" "$encoded"
+      return 0
+    elif encoded=$(printf "%s" "$input" | base64 2>/dev/null | tr -d '\n'); then
+      printf "%s" "$encoded"
+      return 0
+    fi
   fi
-  printf "📋 ${BOLD}${GREEN}Synced${RESET} to ${CYAN}kvdb.io${RESET} (bucket: %s, key: cop).\n" \
-    "$KVDB_BUCKET" >&2
+  # Fallback to Python for encoding if base64 is not available or fails.
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - <<'PYEOF' 2>/dev/null
+import sys, base64
+data = sys.stdin.read().encode()
+print(base64.b64encode(data).decode(), end='')
+PYEOF
+      <<<"$input"
+    return 0
+  fi
+  # If we cannot encode, return the original string; this risks URL issues but ensures progress.
+  printf "%s" "$input"
 }
 
-fetch_from_kvdb() {
-  curl -fsS "https://kvdb.io/${KVDB_BUCKET}/cop"
+# Cross‑platform base64 decode helper. Attempts multiple flags and falls back to Python.
+decode_base64() {
+  local input
+  input=$(cat)
+  # Try GNU base64 --decode
+  if command -v base64 >/dev/null 2>&1; then
+    if out=$(printf "%s" "$input" | base64 --decode 2>/dev/null); then
+      printf "%s" "$out"
+      return 0
+    fi
+    # Try BSD base64 -D
+    if out=$(printf "%s" "$input" | base64 -D 2>/dev/null); then
+      printf "%s" "$out"
+      return 0
+    fi
+    # Try Linux base64 -d
+    if out=$(printf "%s" "$input" | base64 -d 2>/dev/null); then
+      printf "%s" "$out"
+      return 0
+    fi
+  fi
+  # Try Python base64 decode
+  if command -v python3 >/dev/null 2>&1; then
+    if out=$(python3 - <<'PYEOF' 2>/dev/null
+import sys, base64, binascii
+data = sys.stdin.read().strip()
+try:
+    sys.stdout.write(base64.b64decode(data).decode('utf-8'))
+except Exception:
+    pass
+PYEOF
+      <<<"$input"); then
+      if [[ -n "$out" ]]; then
+        printf "%s" "$out"
+        return 0
+      fi
+    fi
+  fi
+  # Fallback: return raw input
+  printf "%s" "$input"
+  return 0
+}
+
+# Send data to keyvalue.immanuel.co using the configured app key and key.
+# The value is base64‑encoded and passed as a path segment to avoid encoding issues.
+send_to_keyvalue() {
+  local data=$1
+  local encoded
+  encoded=$(printf "%s" "$data" | base64_encode | tr -d '\n')
+  local url="https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${KEYVALUE_APP_KEY}/${KEYVALUE_KEY}/${encoded}"
+  local tmp_body status
+  tmp_body=$(mktemp 2>/dev/null || echo "/tmp/cop_kv_body_$$")
+  status=$(curl -s -o "$tmp_body" -w "%{http_code}" -X POST -d '' "$url" || echo "000")
+  if [[ "$status" != "200" && "$status" != "201" ]]; then
+    log "KeyValue POST failed (status $status) to $url"
+    log "KeyValue response body:"
+    sed 's/^/  /' "$tmp_body" >&2
+    rm -f "$tmp_body"
+    return 1
+  fi
+  rm -f "$tmp_body"
+  printf "📋 ${BOLD}${GREEN}Synced${RESET} to ${CYAN}keyvalue.immanuel.co${RESET} (app key: %s, key: %s).\n" "$KEYVALUE_APP_KEY" "$KEYVALUE_KEY" >&2
+  return 0
+}
+
+# Fetch data from keyvalue.immanuel.co using the configured app key and key.
+# Attempts to base64‑decode the stored value.  If decoding fails, the raw string is returned.
+fetch_from_keyvalue() {
+  local url="https://keyvalue.immanuel.co/api/KeyVal/GetValue/${KEYVALUE_APP_KEY}/${KEYVALUE_KEY}"
+  local tmp_body status
+  tmp_body=$(mktemp 2>/dev/null || echo "/tmp/cop_kv_get_$$")
+  status=$(curl -s -o "$tmp_body" -w "%{http_code}" "$url" || echo "000")
+  if [[ "$status" != "200" ]]; then
+    log "KeyValue GET failed (status $status) from $url"
+    log "KeyValue response body:"
+    sed 's/^/  /' "$tmp_body" >&2
+    rm -f "$tmp_body"
+    return 1
+  fi
+  local raw
+  raw=$(cat "$tmp_body")
+  rm -f "$tmp_body"
+  # Trim carriage returns and newlines. Without trimming, the surrounding quote
+  # detection below may fail when the API includes a trailing newline.
+  raw=$(printf "%s" "$raw" | tr -d '\r\n')
+  # If the value is surrounded by double quotes, strip them. This handles
+  # cases where the service returns plain strings (e.g. "floop").
+  if [[ -n "$raw" ]]; then
+    # Determine the first and last characters without using negative offsets.
+    local first_char last_char len
+    len=${#raw}
+    first_char="${raw:0:1}"
+    last_char="${raw:$(($len - 1)):1}"
+    if [[ "$first_char" == '"' && "$last_char" == '"' ]]; then
+      # Remove the surrounding quotes safely using length-based slicing.
+      raw="${raw:1:$(($len - 2))}"
+    fi
+  fi
+  # If the result is empty, return nothing
+  if [[ -z "$raw" ]]; then
+    printf ""
+    return 0
+  fi
+  # Attempt to decode base64; if decoding fails, decode_base64 prints raw
+  printf "%s" "$raw" | decode_base64
+  return 0
 }
 
 ensure_crypto() {
@@ -149,135 +281,138 @@ ensure_crypto() {
 
 encrypt_data() {
   ensure_crypto
-  # stdin -> base64-encoded AES-256-CBC ciphertext
   openssl enc -aes-256-cbc -salt -pass env:COP_SECRET -base64
 }
 
 decrypt_data() {
   ensure_crypto
-  # stdin (base64 ciphertext) -> plaintext
   openssl enc -d -aes-256-cbc -salt -pass env:COP_SECRET -base64
 }
 
+# Prompt user before syncing to the public key-value store.  Displays a truncated preview.
+confirm_public_send() {
+  local payload="$1"
+  local max=128
+  local preview
+  local len=${#payload}
+  if (( len > max )); then
+    preview="${payload:0:max}..."
+  else
+    preview="$payload"
+  fi
+  printf "📋 ${YELLOW}Warning:${RESET} You are about to copy the following text to a public key-value store:\n" >&2
+  printf "    \"%s\"\n" "$preview" >&2
+  printf "📋 Proceed? [y/N] " >&2
+  local ans=""
+  if [[ -r /dev/tty ]]; then
+    read -r ans </dev/tty || ans=""
+  fi
+  case "$ans" in
+    y|Y|yes|YES)
+      return 0
+      ;;
+    *)
+      printf "📋 ${BOLD}${RED}[cop] Aborted keyvalue sync at user request.${RESET}\n" >&2
+      return 1
+      ;;
+  esac
+}
+
+# Paste operation: fetch from keyvalue or local clipboard, optionally decrypt, and print.
 paste_clipboard() {
   local use_network=$1
-  local encrypt=$2
+  local do_encrypt=$2
   local raw out
-
-  if ((use_network)); then
-    raw="$(fetch_from_kvdb)"
-    # Mirror the kvdb content into local clipboard (raw, possibly ciphertext).
+  if (( use_network )); then
+    if ! raw="$(fetch_from_keyvalue)"; then
+      log "Failed to fetch from keyvalue; aborting paste."
+      exit 1
+    fi
     if command -v "$COP_CMD" >/dev/null 2>&1; then
+      # Mirror into clipboard for convenience
       printf "%s" "$raw" | "$COP_CMD" || true
     fi
-    printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}kvdb.io${RESET} (bucket: %s, key: cop).\n" \
-      "$KVDB_BUCKET" >&2
+    printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}keyvalue.immanuel.co${RESET} (app key: %s, key: %s).\n" "$KEYVALUE_APP_KEY" "$KEYVALUE_KEY" >&2
   else
     raw="$(get_local_clipboard)"
-    printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}clipboard${RESET} via ${CYAN}%s${RESET}.\n" \
-      "$PASTE_USED" >&2
+    printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}clipboard${RESET} via ${CYAN}%s${RESET}.\n" "$PASTE_USED" >&2
   fi
-
-  if ((encrypt)); then
+  if (( do_encrypt )); then
     out="$(printf "%s" "$raw" | decrypt_data)"
   else
     out="$raw"
   fi
-
   printf "%s" "$out"
-}
-
-detect_self_overwrite() {
-  # Detect cases like: pas > cop  (stdout redirected to this script file).
-  local script_real out_real
-  script_real="$(readlink -f "$0" 2>/dev/null || echo "$0")"
-  out_real="$(readlink -f /proc/self/fd/1 2>/dev/null || true)"
-
-  if [[ -n "$out_real" && "$script_real" = "$out_real" ]]; then
-    printf "📋 ${BOLD}${RED}[cop] Refusing to overwrite running script (%s).${RESET}\n" \
-      "$script_real" >&2
-    printf "📋 Use a temp file or 'sponge' instead.\n" >&2
-    exit 1
-  fi
 }
 
 main() {
   local paste=0
   local network=0
   local encrypt=0
-
-  # If invoked as "pas" (symlink), behave as if "-p" was passed.
   local script_name
   script_name=$(basename "$0")
+  # If invoked as "pas", act as if -p was passed
   if [[ "$script_name" == "pas" ]]; then
     set -- -p "$@"
   fi
-
-  # Parse options
   while [[ $# -gt 0 ]]; do
     case "$1" in
-    -h | --help)
-      show_usage
-      exit 0
-      ;;
-    -p)
-      paste=1
-      shift
-      ;;
-    -n)
-      network=1
-      shift
-      ;;
-    -e)
-      encrypt=1
-      shift
-      ;;
-    --)
-      shift
-      break
-      ;;
-    -*)
-      log "Unknown option: $1"
-      show_usage
-      exit 1
-      ;;
-    *)
-      break
-      ;;
+      -h|--help)
+        show_usage
+        exit 0
+        ;;
+      -p)
+        paste=1
+        shift
+        ;;
+      -n)
+        network=1
+        shift
+        ;;
+      -e)
+        encrypt=1
+        shift
+        ;;
+      --)
+        shift
+        break
+        ;;
+      -* )
+        log "Unknown option: $1"
+        show_usage
+        exit 1
+        ;;
+      * )
+        break
+        ;;
     esac
   done
-
-  # Refuse to stream output into our own script file.
-  detect_self_overwrite
-
-  if ((paste)); then
+  if (( paste )); then
     paste_clipboard "$network" "$encrypt"
     exit 0
   fi
-
-  # Copy mode: fill LAST_PAYLOAD
-  if ! [ -t 0 ]; then
+  # Copy mode: gather payload
+  if ! [[ -t 0 ]]; then
     copy_from_stdin
-  elif [ "$#" -gt 0 ]; then
+  elif [[ $# -gt 0 ]]; then
     copy_from_files "$@"
   else
     show_usage
     exit 1
   fi
-
   local payload="$LAST_PAYLOAD"
-
-  if ((encrypt)); then
+  if (( encrypt )); then
     payload="$(printf "%s" "$payload" | encrypt_data)"
   fi
-
+  # Copy to clipboard
   printf "%s" "$payload" | "$COP_CMD"
-
-  if ((network)); then
-    send_to_kvdb "$payload" || true
+  # Optionally sync to keyvalue
+  if (( network )); then
+    if confirm_public_send "$payload"; then
+      send_to_keyvalue "$payload" || true
+    fi
   fi
-
-  if [ "$mode" = "stdin" ]; then
+  if [[ "$mode" == "stdin" ]]; then
     printf "📋 ${BOLD}${GREEN}Copied${RESET} from ${CYAN}stdin${RESET} (%s byte(s)).\n" "$bytes"
   else
     printf "📋 ${BOLD}${GREEN}Copied${RESET} from ${CYAN}files${RESET} (%s file(s), %s byte(s)).\n" "$#" "$bytes"
