@@ -1,569 +1,385 @@
 #!/usr/bin/env bash
-# Clipboard helper: copy (default), paste (-p), optional keyvalue sync (-n) and encryption (-e).
+# cop — clipboard helper with optional network sync and encryption
 
 set -euo pipefail
 
-# Program used to copy to the system clipboard. Override with COP_CMD if defined in the environment.
-COP_CMD="${COP_CMD:-pbcopy}"
-
-# keyvalue.immanuel.co app key; this is an opaque identifier used to update/get values.
+# --- Configuration -----------------------------------------------------------
 KEYVALUE_APP_KEY="pk1vk7oj"
-
-# Predetermined key under which to store the clipboard content in the key-value service.
 KEYVALUE_KEY="cop"
 
-# ANSI colour codes (via $'\033[...') for consistent colour rendering across shells.
-GREEN=$'\033[32m'
-CYAN=$'\033[36m'
-YELLOW=$'\033[33m'
-RED=$'\033[31m'
-BOLD=$'\033[1m'
-RESET=$'\033[0m'
+# --- Pastel Colors (soft, beautiful) -----------------------------------------
+C_ROSE=$'\033[38;5;218m'      # soft pink
+C_PEACH=$'\033[38;5;223m'     # warm peach  
+C_MINT=$'\033[38;5;158m'      # fresh mint
+C_SKY=$'\033[38;5;117m'       # morning sky
+C_LAVENDER=$'\033[38;5;183m'  # gentle lavender
+C_GOLD=$'\033[38;5;222m'      # sunrise gold
+C_CORAL=$'\033[38;5;210m'     # soft coral
+C_DIM=$'\033[2m'              # dimmed
+C_BOLD=$'\033[1m'             # bold
+C_RESET=$'\033[0m'            # reset
 
-mode=""
-bytes=0
-LAST_PAYLOAD=""
-PASTE_USED=""
-copy_flag=0
-info_flag=0
+# --- ASCII Art (configurable: COP_ART_SIZE=small|medium|large) ---------------
+COP_ART_SIZE="${COP_ART_SIZE:-medium}"
 
-# Logging helper for uniform prefix.
-log() {
-  printf "📋 %s[cop]%s %s\n" "$BOLD$RED" "$RESET" "$*" >&2
+art_small() {
+  cat <<'EOF'
+    ___  __  ___
+   / __\/ / / _ \
+  / /  / /_/ ___/
+  \_\  \__/\/    
+EOF
 }
 
+art_medium() {
+  cat <<'EOF'
+       ██████╗ ██████╗ ██████╗ 
+      ██╔════╝██╔═══██╗██╔══██╗
+      ██║     ██║   ██║██████╔╝
+      ██║     ██║   ██║██╔═══╝ 
+      ╚██████╗╚██████╔╝██║     
+       ╚═════╝ ╚═════╝ ╚═╝     
+EOF
+}
+
+art_large() {
+  cat <<'EOF'
+       ▄████▄   ▒█████   ██▓███  
+      ▒██▀ ▀█  ▒██▒  ██▒▓██░  ██▒
+      ▒▓█    ▄ ▒██░  ██▒▓██░ ██▓▒
+      ▒▓▓▄ ▄██▒▒██   ██░▒██▄█▓▒ ▒
+      ▒ ▓███▀ ░░ ████▓▒░▒██▒ ░  ░
+      ░ ░▒ ▒  ░░ ▒░▒░▒░ ▒▓▒░ ░  ░
+EOF
+}
+
+show_horizon() {
+  # Pastel sunrise horizon
+  printf "  %s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s%s\n" \
+    "$C_SKY" "$C_MINT" "$C_PEACH" "$C_GOLD" "$C_CORAL" "$C_ROSE" \
+    "$C_LAVENDER" "$C_SKY" "$C_MINT" "$C_PEACH" "$C_GOLD" "$C_CORAL" \
+    "$C_ROSE" "$C_LAVENDER" "$C_SKY" "$C_RESET"
+  
+  # Art in gradient colors
+  local art_func="art_medium"
+  case "$COP_ART_SIZE" in
+    small) art_func="art_small" ;;
+    large) art_func="art_large" ;;
+  esac
+  
+  local colors=("$C_PEACH" "$C_GOLD" "$C_CORAL" "$C_ROSE" "$C_LAVENDER" "$C_SKY")
+  local i=0
+  while IFS= read -r line; do
+    printf "%s%s%s\n" "${colors[$((i % ${#colors[@]}))]}" "$line" "$C_RESET"
+    ((i++)) || true
+  done < <($art_func)
+  
+  # Bottom horizon line  
+  printf "  %s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s%s\n" \
+    "$C_GOLD" "$C_PEACH" "$C_CORAL" "$C_ROSE" "$C_LAVENDER" \
+    "$C_SKY" "$C_MINT" "$C_GOLD" "$C_PEACH" "$C_CORAL" \
+    "$C_ROSE" "$C_LAVENDER" "$C_SKY" "$C_MINT" "$C_GOLD" \
+    "$C_PEACH" "$C_CORAL" "$C_ROSE" "$C_LAVENDER" "$C_SKY" "$C_RESET"
+  printf "  %s☀ clipboard helper%s\n\n" "$C_DIM" "$C_RESET"
+}
+
+# --- Logging -----------------------------------------------------------------
+log() { printf "📋 %s%s%s\n" "$C_CORAL" "$*" "$C_RESET" >&2; }
+
+# --- Help --------------------------------------------------------------------
 show_usage() {
-  cat >&2 <<EOF_USAGE
+  show_horizon >&2
+  cat >&2 <<EOF
+${C_GOLD}Usage:${C_RESET}
+  cop [OPTIONS] [FILE...]
 
-📋 ${BOLD}${GREEN}cop${RESET} — clipboard helper
+${C_GOLD}Options:${C_RESET}
+  ${C_SKY}-p${C_RESET}  --paste      Paste from clipboard or remote
+  ${C_SKY}-n${C_RESET}  --network    Sync via keyvalue.immanuel.co
+  ${C_SKY}-e${C_RESET}  --encrypt    AES-256-CBC encrypt/decrypt (\$COP_SECRET)
+  ${C_SKY}-c${C_RESET}  --copy       Also copy fetched data locally (with -n)
+  ${C_SKY}-i${C_RESET}  --info       Show clipboard command info
+  ${C_SKY}-h${C_RESET}  --help       Show this help
 
-${YELLOW}Usage:${RESET}
-  cop [${CYAN}OPTIONS${RESET}] [FILE...]
+${C_GOLD}Examples:${C_RESET}
+  ${C_DIM}echo "hello" | cop${C_RESET}      copy text
+  ${C_DIM}cop file.txt${C_RESET}            copy file contents
+  ${C_DIM}cop -n -e file.txt${C_RESET}      encrypt & sync to remote
+  ${C_DIM}cop -p${C_RESET}                  paste from clipboard
+  ${C_DIM}cop -pne${C_RESET}                paste, decrypt from remote
+  ${C_DIM}cop -p out.txt${C_RESET}          paste into file
 
-${YELLOW}Options:${RESET}
-  -p, --paste      Paste mode: print data from clipboard or remote
-  -n, --network    Use keyvalue.immanuel.co for remote sync
-  -e, --encrypt    Encrypt or decrypt using \$COP_SECRET (AES‑256‑CBC)
-  -c, --copy       Copy fetched data to local clipboard (relevant with -n)
-  -i, --info       Show info about available copy/pasteboard commands
-  -h, --help       Show this help message
-
-${YELLOW}Notes:${RESET}
-  • Short options may be concatenated; for example, -pne is the same as -p -n -e.
-  • Without any options, cop reads from stdin or files and copies to the clipboard.
-  • When using -n, data is sent to or fetched from the remote key‑value store.
-  • Encryption only affects the remote payload; your local clipboard remains plaintext.
-  • A symlink named 'pas' acts like running 'cop -p'.
-
-${YELLOW}Examples:${RESET}
-  echo "hello" | cop          — copy plain text to clipboard
-  cop file.txt                — copy contents of file.txt
-  cop -n file.txt             — copy and sync file to remote
-  cop -n -e file.txt          — encrypt then sync file to remote
-  cop -p                      — paste from local clipboard
-  cop -p -n                   — paste from remote store
-  cop -p -n -e                — paste and decrypt remote content
-  cop -p -n -e -c             — paste, decrypt, and copy to clipboard
-  cop -p output.txt           — paste clipboard contents into output.txt
-
-EOF_USAGE
+${C_DIM}Symlink as 'pas' for paste mode. Options combine: -pne = -p -n -e${C_RESET}
+EOF
 }
 
-# Read data from stdin and record the payload.
-copy_from_stdin() {
-  mode="stdin"
-  local data
-  data="$(cat)"
-  bytes=$(printf "%s" "$data" | wc -c | tr -d ' ')
-  LAST_PAYLOAD="$data"
-}
-
-# Read data from supplied files and record the payload.
-copy_from_files() {
-  mode="files"
-  local data
-  data="$(cat -- "$@")"
-  bytes=$(printf "%s" "$data" | wc -c | tr -d ' ')
-  LAST_PAYLOAD="$data"
-}
-
-# Environment detection helpers for X11/Wayland, used to choose paste command.
+# --- Environment Detection ---------------------------------------------------
 is_wayland() { [[ -n "${WAYLAND_DISPLAY:-}" && -S "/run/user/$(id -u)/${WAYLAND_DISPLAY}" ]]; }
 is_x11() { [[ -n "${DISPLAY:-}" ]]; }
 
-# Candidate commands for pasting from the system clipboard.
-PASTE_CMDS=(
-  wl-paste
-  pbpaste
-  powershell.exe
-  xclip
-  xsel
-  termux-clipboard-get
-  getclip
-)
+# --- Copy Command Detection --------------------------------------------------
+COPY_CMDS=(wl-copy pbcopy clip.exe xclip xsel termux-clipboard-set putclip)
+COPY_USED=""
 
-find_paste_cmd() {
-  for cmd in "${PASTE_CMDS[@]}"; do
-    command -v "$cmd" >/dev/null 2>&1 || continue
+find_copy_cmd() {
+  # Respect explicit override
+  [[ -n "${COP_CMD:-}" ]] && command -v "$COP_CMD" &>/dev/null && { echo "$COP_CMD"; return 0; }
+  for cmd in "${COPY_CMDS[@]}"; do
+    command -v "$cmd" &>/dev/null || continue
     case "$cmd" in
-    wl-paste) is_wayland || continue ;;
-    xclip | xsel) is_x11 || continue ;;
+      wl-copy)    is_wayland || continue ;;
+      xclip|xsel) is_x11 || continue ;;
     esac
-    echo "$cmd"
-    return 0
+    echo "$cmd"; return 0
   done
   return 1
 }
 
-# Retrieve text from the local clipboard using an appropriate utility.
-get_local_clipboard() {
-  local paste_cmd data
-  if ! paste_cmd=$(find_paste_cmd); then
-    log "Error: no working paste utility found (checked: ${PASTE_CMDS[*]})"
-    exit 1
-  fi
-  PASTE_USED="$paste_cmd"
-  case "$paste_cmd" in
-  wl-paste | pbpaste | termux-clipboard-get | getclip)
-    data="$($paste_cmd)"
-    ;;
-  powershell.exe)
-    data="$($paste_cmd -Command "Get-Clipboard")"
-    ;;
-  xclip)
-    data="$($paste_cmd -selection clipboard -o)"
-    ;;
-  xsel)
-    data="$($paste_cmd --clipboard --output)"
-    ;;
-  esac
-  printf "%s" "$data"
-}
-
-# Encode data as base64 without newlines.  Uses the available base64 implementation.
-base64_encode() {
-  local input
-  input=$(cat)
-  if command -v base64 >/dev/null 2>&1; then
-    if encoded=$(printf "%s" "$input" | base64 --wrap=0 2>/dev/null); then
-      printf "%s" "$encoded"
-      return 0
-    elif encoded=$(printf "%s" "$input" | base64 2>/dev/null | tr -d '\n'); then
-      printf "%s" "$encoded"
-      return 0
-    fi
-  fi
-  # Fallback to Python for encoding if base64 is not available or fails.
-  if command -v python3 >/dev/null 2>&1; then
-    python3 - <<'PYEOF' 2>/dev/null
-import sys, base64
-data = sys.stdin.read().encode()
-print(base64.b64encode(data).decode(), end='')
-PYEOF
-    <<<"$input"
-    return 0
-  fi
-  # If we cannot encode, return the original string; this risks URL issues but ensures progress.
-  printf "%s" "$input"
-}
-
-# Cross‑platform base64 decode helper. Attempts multiple flags and falls back to Python.
-decode_base64() {
-  local input
-  input=$(cat)
-  # Try GNU base64 --decode
-  if command -v base64 >/dev/null 2>&1; then
-    if out=$(printf "%s" "$input" | base64 --decode 2>/dev/null); then
-      printf "%s" "$out"
-      return 0
-    fi
-    # Try BSD base64 -D
-    if out=$(printf "%s" "$input" | base64 -D 2>/dev/null); then
-      printf "%s" "$out"
-      return 0
-    fi
-    # Try Linux base64 -d
-    if out=$(printf "%s" "$input" | base64 -d 2>/dev/null); then
-      printf "%s" "$out"
-      return 0
-    fi
-  fi
-  # Try Python base64 decode
-  if command -v python3 >/dev/null 2>&1; then
-    if out=$(
-      python3 - <<'PYEOF' 2>/dev/null
-import sys, base64, binascii
-data = sys.stdin.read().strip()
-try:
-    sys.stdout.write(base64.b64decode(data).decode('utf-8'))
-except Exception:
-    pass
-PYEOF
-      <<<"$input"
-    ); then
-      if [[ -n "$out" ]]; then
-        printf "%s" "$out"
-        return 0
-      fi
-    fi
-  fi
-  # Fallback: return raw input
-  printf "%s" "$input"
-  return 0
-}
-
-# Send data to keyvalue.immanuel.co using the configured app key and key.
-# The value is base64‑encoded and passed as a path segment to avoid encoding issues.
-send_to_keyvalue() {
-  local data=$1
-  local encoded
-  encoded=$(printf "%s" "$data" | base64_encode | tr -d '\n')
-  local url="https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${KEYVALUE_APP_KEY}/${KEYVALUE_KEY}/${encoded}"
-  local tmp_body status
-  tmp_body=$(mktemp 2>/dev/null || echo "/tmp/cop_kv_body_$$")
-  status=$(curl -s -o "$tmp_body" -w "%{http_code}" -X POST -d '' "$url" || echo "000")
-  if [[ "$status" != "200" && "$status" != "201" ]]; then
-    log "KeyValue POST failed (status $status) to $url"
-    log "KeyValue response body:"
-    sed 's/^/  /' "$tmp_body" >&2
-    rm -f "$tmp_body"
-    return 1
-  fi
-  rm -f "$tmp_body"
-  printf "📋 ${BOLD}${GREEN}Synced${RESET} to ${CYAN}keyvalue.immanuel.co${RESET} (app key: %s, key: %s).\n" "$KEYVALUE_APP_KEY" "$KEYVALUE_KEY" >&2
-  return 0
-}
-
-# Fetch data from keyvalue.immanuel.co using the configured app key and key.
-# Attempts to base64‑decode the stored value.  If decoding fails, the raw string is returned.
-fetch_from_keyvalue() {
-  local url="https://keyvalue.immanuel.co/api/KeyVal/GetValue/${KEYVALUE_APP_KEY}/${KEYVALUE_KEY}"
-  local tmp_body status
-  tmp_body=$(mktemp 2>/dev/null || echo "/tmp/cop_kv_get_$$")
-  status=$(curl -s -o "$tmp_body" -w "%{http_code}" "$url" || echo "000")
-  if [[ "$status" != "200" ]]; then
-    log "KeyValue GET failed (status $status) from $url"
-    log "KeyValue response body:"
-    sed 's/^/  /' "$tmp_body" >&2
-    rm -f "$tmp_body"
-    return 1
-  fi
-  local raw
-  raw=$(cat "$tmp_body")
-  rm -f "$tmp_body"
-  # Trim carriage returns and newlines. Without trimming, the surrounding quote
-  # detection below may fail when the API includes a trailing newline.
-  raw=$(printf "%s" "$raw" | tr -d '\r\n')
-  # If the value is surrounded by double quotes, strip them. This handles
-  # cases where the service returns plain strings (e.g. "floop").
-  if [[ -n "$raw" ]]; then
-    # Determine the first and last characters without using negative offsets.
-    local first_char last_char len
-    len=${#raw}
-    first_char="${raw:0:1}"
-    last_char="${raw:$(($len - 1)):1}"
-    if [[ "$first_char" == '"' && "$last_char" == '"' ]]; then
-      # Remove the surrounding quotes safely using length-based slicing.
-      raw="${raw:1:$(($len - 2))}"
-    fi
-  fi
-  # If the result is empty, return nothing
-  if [[ -z "$raw" ]]; then
-    printf ""
-    return 0
-  fi
-  # Attempt to decode base64; if decoding fails, decode_base64 prints raw
-  printf "%s" "$raw" | decode_base64
-  return 0
-}
-
-ensure_crypto() {
-  if ! command -v openssl >/dev/null 2>&1; then
-    log "Error: openssl not found; -e cannot be used on this system"
-    exit 1
-  fi
-  if [[ -z "${COP_SECRET:-}" ]]; then
-    log "Error: COP_SECRET not set; -e requires a symmetric secret in COP_SECRET"
-    exit 1
-  fi
-}
-
-encrypt_data() {
-  ensure_crypto
-  openssl enc -aes-256-cbc -salt -pass env:COP_SECRET -base64
-}
-
-decrypt_data() {
-  ensure_crypto
-  openssl enc -d -aes-256-cbc -salt -pass env:COP_SECRET -base64
-}
-
-# Prompt user before syncing to the public key-value store.  Displays a truncated preview.
-confirm_public_send() {
-  # $1: plaintext payload to display in the prompt
-  # $2: encryption flag (1 if encryption is enabled, 0 otherwise)
-  local payload="$1"
-  local enc_flag="${2:-0}"
-  local max=128
-  local preview
-  local len=${#payload}
-  if ((len > max)); then
-    preview="${payload:0:max}..."
-  else
-    preview="$payload"
-  fi
-  if ((enc_flag)); then
-    printf "📋 🔒 This text will be encrypted before upload. Unencrypted preview:\n" >&2
-  else
-    printf "📋 ${YELLOW}Warning:${RESET} You are about to copy the following text to a public key-value store:\n" >&2
-  fi
-  printf "    \"%s\"\n" "$preview" >&2
-  printf "📋 Proceed? [y/N] " >&2
-  local ans=""
-  if [[ -r /dev/tty ]]; then
-    read -r ans </dev/tty || ans=""
-  fi
-  case "$ans" in
-  y | Y | yes | YES)
-    return 0
-    ;;
-  *)
-    printf "📋 ${BOLD}${RED}[cop] Aborted keyvalue sync at user request.${RESET}\n" >&2
-    return 1
-    ;;
+copy_to_clipboard() {
+  local cmd
+  cmd=$(find_copy_cmd) || { log "No copy utility found"; exit 1; }
+  COPY_USED="$cmd"
+  case "$cmd" in
+    wl-copy|pbcopy|termux-clipboard-set|putclip|clip.exe) "$cmd" ;;
+    xclip) "$cmd" -selection clipboard ;;
+    xsel)  "$cmd" --clipboard --input ;;
+    *)     "$cmd" ;;  # fallback for COP_CMD override
   esac
 }
 
-# Print information about available clipboard helpers and which ones are in use.
-print_info() {
-  printf "📋 Clipboard helpers info:\n" >&2
-  # Report copy command
-  if command -v "$COP_CMD" >/dev/null 2>&1; then
-    printf "  Copy command (COP_CMD): %s (available)\n" "$COP_CMD" >&2
-  else
-    printf "  Copy command (COP_CMD): %s (not found)\n" "$COP_CMD" >&2
-  fi
-  printf "\n  Paste commands:\n" >&2
-  local cmd availability
+# --- Paste Command Detection -------------------------------------------------
+PASTE_CMDS=(wl-paste pbpaste powershell.exe xclip xsel termux-clipboard-get getclip)
+PASTE_USED=""
+
+find_paste_cmd() {
   for cmd in "${PASTE_CMDS[@]}"; do
-    availability="not found"
-    if command -v "$cmd" >/dev/null 2>&1; then
-      # Check environment restrictions
-      availability="available"
+    command -v "$cmd" &>/dev/null || continue
+    case "$cmd" in
+      wl-paste)   is_wayland || continue ;;
+      xclip|xsel) is_x11 || continue ;;
+    esac
+    echo "$cmd"; return 0
+  done
+  return 1
+}
+
+get_local_clipboard() {
+  local cmd
+  cmd=$(find_paste_cmd) || { log "No paste utility found"; exit 1; }
+  PASTE_USED="$cmd"
+  case "$cmd" in
+    wl-paste|pbpaste|termux-clipboard-get|getclip) "$cmd" ;;
+    powershell.exe) "$cmd" -Command "Get-Clipboard" ;;
+    xclip)          "$cmd" -selection clipboard -o ;;
+    xsel)           "$cmd" --clipboard --output ;;
+  esac
+}
+
+# --- Base64 Helpers ----------------------------------------------------------
+b64_encode() {
+  if base64 --wrap=0 2>/dev/null; then return 0; fi
+  if base64 2>/dev/null | tr -d '\n'; then return 0; fi
+  python3 -c 'import sys,base64;print(base64.b64encode(sys.stdin.buffer.read()).decode(),end="")' 2>/dev/null || cat
+}
+
+b64_decode() {
+  local input; input=$(cat)
+  base64 --decode 2>/dev/null <<<"$input" && return 0
+  base64 -D 2>/dev/null <<<"$input" && return 0
+  base64 -d 2>/dev/null <<<"$input" && return 0
+  python3 -c 'import sys,base64;sys.stdout.write(base64.b64decode(sys.stdin.read().strip()).decode())' 2>/dev/null <<<"$input" && return 0
+  printf "%s" "$input"
+}
+
+# --- KeyValue API ------------------------------------------------------------
+kv_send() {
+  local encoded; encoded=$(printf "%s" "$1" | b64_encode)
+  local url="https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${KEYVALUE_APP_KEY}/${KEYVALUE_KEY}/${encoded}"
+  local status; status=$(curl -s -o /dev/null -w "%{http_code}" -X POST -d '' "$url")
+  [[ "$status" =~ ^20[01]$ ]] || { log "KeyValue POST failed ($status)"; return 1; }
+  printf "📋 %s✓ Synced%s to %skeyvalue.immanuel.co%s\n" "$C_MINT" "$C_RESET" "$C_SKY" "$C_RESET" >&2
+}
+
+kv_fetch() {
+  local url="https://keyvalue.immanuel.co/api/KeyVal/GetValue/${KEYVALUE_APP_KEY}/${KEYVALUE_KEY}"
+  local tmp; tmp=$(mktemp)
+  local status; status=$(curl -s -o "$tmp" -w "%{http_code}" "$url")
+  [[ "$status" == "200" ]] || { log "KeyValue GET failed ($status)"; rm -f "$tmp"; return 1; }
+  local raw; raw=$(<"$tmp"); rm -f "$tmp"
+  raw=${raw//$'\r'/}; raw=${raw//$'\n'/}
+  # Strip surrounding quotes if present
+  [[ "${raw:0:1}${raw: -1}" == '""' ]] && raw="${raw:1:${#raw}-2}"
+  [[ -n "$raw" ]] && printf "%s" "$raw" | b64_decode || printf ""
+}
+
+# --- Encryption --------------------------------------------------------------
+ensure_crypto() {
+  command -v openssl &>/dev/null || { log "openssl not found"; exit 1; }
+  [[ -n "${COP_SECRET:-}" ]] || { log "COP_SECRET not set"; exit 1; }
+}
+
+encrypt() { ensure_crypto; openssl enc -aes-256-cbc -salt -pbkdf2 -pass env:COP_SECRET -base64; }
+decrypt() { ensure_crypto; openssl enc -d -aes-256-cbc -pbkdf2 -pass env:COP_SECRET -base64; }
+
+# --- User Confirmation -------------------------------------------------------
+confirm_send() {
+  local payload="$1" enc="$2" preview
+  ((${#payload} > 120)) && preview="${payload:0:120}…" || preview="$payload"
+  
+  if ((enc)); then
+    printf "📋 %s🔒 Will encrypt before upload:%s\n" "$C_LAVENDER" "$C_RESET" >&2
+  else
+    printf "📋 %s⚠ Public upload:%s\n" "$C_GOLD" "$C_RESET" >&2
+  fi
+  printf "   %s\"%s\"%s\n" "$C_DIM" "$preview" "$C_RESET" >&2
+  printf "📋 Proceed? [y/N] " >&2
+  
+  local ans=""
+  [[ -r /dev/tty ]] && read -r ans </dev/tty
+  [[ "$ans" =~ ^[Yy] ]] || { printf "📋 %sAborted%s\n" "$C_CORAL" "$C_RESET" >&2; return 1; }
+}
+
+# --- Info Display ------------------------------------------------------------
+print_info() {
+  show_horizon >&2
+  printf "%sClipboard Info%s\n\n" "$C_GOLD" "$C_RESET" >&2
+  
+  # Copy commands
+  printf "\n  Copy commands:\n" >&2
+  for cmd in "${COPY_CMDS[@]}"; do
+    local status="$C_DIM─$C_RESET"
+    if command -v "$cmd" &>/dev/null; then
+      status="$C_MINT✓$C_RESET"
       case "$cmd" in
-      wl-paste)
-        if ! is_wayland; then
-          availability="available but Wayland not detected"
-        fi
-        ;;
-      xclip | xsel)
-        if ! is_x11; then
-          availability="available but X11 not detected"
-        fi
-        ;;
+        wl-copy)    is_wayland || status="$C_GOLD○$C_RESET ${C_DIM}(no Wayland)${C_RESET}" ;;
+        xclip|xsel) is_x11 || status="$C_GOLD○$C_RESET ${C_DIM}(no X11)${C_RESET}" ;;
       esac
     fi
-    printf "    %-20s %s\n" "$cmd" "$availability" >&2
+    printf "    %-18s %s\n" "$cmd" "$status" >&2
   done
-  # Determine which paste command would be used
-  local current
-  current=$(find_paste_cmd 2>/dev/null || echo "none")
-  printf "\n  Current paste command: %s\n" "$current" >&2
+  
+  # Copy command
+  local copy_cmd
+  copy_cmd=$(find_copy_cmd 2>/dev/null || echo "none")
+  
+  # Paste commands
+  printf "\n  Paste commands:\n" >&2
+  for cmd in "${PASTE_CMDS[@]}"; do
+    local status="$C_DIM─$C_RESET"
+    if command -v "$cmd" &>/dev/null; then
+      status="$C_MINT✓$C_RESET"
+      case "$cmd" in
+        wl-paste)   is_wayland || status="$C_GOLD○$C_RESET ${C_DIM}(no Wayland)${C_RESET}" ;;
+        xclip|xsel) is_x11 || status="$C_GOLD○$C_RESET ${C_DIM}(no X11)${C_RESET}" ;;
+      esac
+    fi
+    printf "    %-18s %s\n" "$cmd" "$status" >&2
+  done
+  
+  local current; current=$(find_paste_cmd 2>/dev/null || echo "none")
+  printf "\n  %sActive:%s copy=%s, paste=%s\n" "$C_SKY" "$C_RESET" "$copy_cmd" "$current" >&2
 }
 
-# Paste operation: fetch from keyvalue or local clipboard, optionally decrypt, and print.
-paste_clipboard() {
-  local use_network=$1
-  local do_encrypt=$2
-  local copy_local=$3
+# --- Main Operations ---------------------------------------------------------
+do_paste() {
+  local network=$1 enc=$2 copy_local=$3 output_file="${4:-}"
   local raw out
-  if ((use_network)); then
-    if ! raw="$(fetch_from_keyvalue)"; then
-      log "Failed to fetch from keyvalue; aborting paste."
-      exit 1
-    fi
-    printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}keyvalue.immanuel.co${RESET} (app key: %s, key: %s).\n" "$KEYVALUE_APP_KEY" "$KEYVALUE_KEY" >&2
+  
+  if ((network)); then
+    raw=$(kv_fetch) || exit 1
+    printf "📋 %s✓ Fetched%s from %skeyvalue.immanuel.co%s\n" "$C_MINT" "$C_RESET" "$C_SKY" "$C_RESET" >&2
   else
-    raw="$(get_local_clipboard)"
-    printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}clipboard${RESET} via ${CYAN}%s${RESET}.\n" "$PASTE_USED" >&2
+    raw=$(get_local_clipboard)
+    printf "📋 %s✓ Pasted%s via %s%s%s\n" "$C_MINT" "$C_RESET" "$C_SKY" "$PASTE_USED" "$C_RESET" >&2
   fi
-  if ((do_encrypt)); then
-    out="$(printf "%s" "$raw" | decrypt_data)"
+  
+  ((enc)) && out=$(printf "%s" "$raw" | decrypt) || out="$raw"
+  ((copy_local)) && printf "%s" "$out" | copy_to_clipboard
+  
+  if [[ -n "$output_file" ]]; then
+    printf "%s" "$out" > "$output_file"
+    printf "📋 %s✓ Written%s to %s%s%s (%d bytes)\n" \
+      "$C_MINT" "$C_RESET" "$C_SKY" "$output_file" "$C_RESET" "${#out}" >&2
   else
-    out="$raw"
+    printf "%s" "$out"
   fi
-  # Copy to local clipboard if requested
-  if ((copy_local)); then
-    printf "%s" "$out" | "$COP_CMD"
-  fi
-  # Print decrypted/plain text to stdout
-  printf "%s" "$out"
 }
 
+do_copy() {
+  local network=$1 enc=$2 copy_local=$3 payload="$4"
+  local to_send
+  
+  ((enc)) && to_send=$(printf "%s" "$payload" | encrypt) || to_send="$payload"
+  ((copy_local)) && printf "%s" "$to_send" | copy_to_clipboard
+  
+  if ((network)); then
+    confirm_send "$payload" "$enc" && kv_send "$to_send"
+  fi
+  
+  printf "📋 %s✓ Copied%s %d bytes\n" "$C_MINT" "$C_RESET" "${#payload}"
+}
+
+# --- Entry Point -------------------------------------------------------------
 main() {
-  local paste=0
-  local network=0
-  local encrypt=0
-  local script_name
-  script_name=$(basename "$0")
-  # If invoked as "pas", act as if -p was passed
-  if [[ "$script_name" == "pas" ]]; then
-    set -- -p "$@"
-  fi
-  # Parse options, accepting long names and combined short options (-pne)
+  local paste=0 network=0 enc=0 copy_flag=0 info_flag=0
+  
+  # Symlink detection
+  [[ "$(basename "$0")" == "pas" ]] && paste=1
+  
+  # Parse options
   while [[ $# -gt 0 ]]; do
-    local arg="$1"
-    case "$arg" in
-    --help)
-      show_usage
-      exit 0
-      ;;
-    --info)
-      info_flag=1
-      shift
-      continue
-      ;;
-    --paste)
-      paste=1
-      shift
-      continue
-      ;;
-    --network)
-      network=1
-      shift
-      continue
-      ;;
-    --encrypt)
-      encrypt=1
-      shift
-      continue
-      ;;
-    --copy)
-      copy_flag=1
-      shift
-      continue
-      ;;
-    --)
-      shift
-      break
-      ;;
-    -*)
-      # Handle combined short options like -pne
-      local i
-      for ((i = 1; i < ${#arg}; i++)); do
-        local ch="${arg:i:1}"
-        case "$ch" in
-        p) paste=1 ;;
-        n) network=1 ;;
-        e) encrypt=1 ;;
-        c) copy_flag=1 ;;
-        i) info_flag=1 ;;
-        h)
-          show_usage
-          exit 0
-          ;;
-        *)
-          log "Unknown option: -$ch"
-          show_usage
-          exit 1
-          ;;
-        esac
-      done
-      shift
-      continue
-      ;;
-    *)
-      break
-      ;;
+    case "$1" in
+      --help)    show_usage; exit 0 ;;
+      --info)    info_flag=1 ;;
+      --paste)   paste=1 ;;
+      --network) network=1 ;;
+      --encrypt) enc=1 ;;
+      --copy)    copy_flag=1 ;;
+      --)        shift; break ;;
+      -*)
+        for ((i=1; i<${#1}; i++)); do
+          case "${1:i:1}" in
+            h) show_usage; exit 0 ;;
+            i) info_flag=1 ;;
+            p) paste=1 ;;
+            n) network=1 ;;
+            e) enc=1 ;;
+            c) copy_flag=1 ;;
+            *) log "Unknown: -${1:i:1}"; show_usage; exit 1 ;;
+          esac
+        done ;;
+      *) break ;;
     esac
+    shift
   done
-  # Determine whether to copy to local clipboard.  By default, copying
-  # occurs for local operations.  For network operations (-n), copying is
-  # disabled unless the user explicitly requested it (-c/--copy).
-  local copy_local=1
-  if ((network)); then
-    copy_local=0
-  fi
-  if ((copy_flag)); then
-    copy_local=1
-  fi
-  # Emit a Marvin-esque sigh if -c is specified without -n (redundant)
-  if ((copy_flag)) && ((network == 0)); then
-    log "Marvin sighs: you specified -c without -n… I was going to copy anyway."
-  fi
-
-  # If --info was requested, display helper information and exit
-  if ((info_flag)); then
-    print_info
-    exit 0
-  fi
-
+  
+  # Copy-to-local logic: default on unless network mode (then explicit -c needed)
+  local copy_local=$((network ? copy_flag : 1))
+  
+  # Marvin's sigh
+  ((copy_flag && !network)) && log "${C_DIM}*sigh* -c without -n… I was copying anyway${C_RESET}"
+  
+  # Info mode
+  ((info_flag)) && { print_info; exit 0; }
+  
+  # Paste mode
   if ((paste)); then
-    # If a file argument is provided, write the pasted content to that file.
-    local output_file=""
-    if (($# > 1)); then
-      log "Error: only one output file may be specified for paste mode"
-      exit 1
-    elif (($# == 1)); then
-      output_file="$1"
-      shift
-    fi
-    # Fetch/decrypt the content
-    local out
-    out=$(paste_clipboard "$network" "$encrypt" "$copy_local")
-    # Write to file or stdout
-    if [[ -n "$output_file" ]]; then
-      # Write output to specified file
-      printf "%s" "$out" >"$output_file"
-      # Report success
-      local out_bytes
-      out_bytes=$(printf "%s" "$out" | wc -c | tr -d ' ')
-      printf "📋 ${BOLD}${GREEN}Written${RESET} to ${CYAN}%s${RESET} (%s byte(s)).\n" "$output_file" "$out_bytes" >&2
-    else
-      printf "%s" "$out"
-    fi
+    (($# > 1)) && { log "Only one output file allowed"; exit 1; }
+    do_paste "$network" "$enc" "$copy_local" "${1:-}"
     exit 0
   fi
-  # Copy mode: gather payload
-  if ! [[ -t 0 ]]; then
-    copy_from_stdin
+  
+  # Copy mode
+  local payload
+  if [[ ! -t 0 ]]; then
+    payload=$(cat)
   elif [[ $# -gt 0 ]]; then
-    copy_from_files "$@"
+    payload=$(cat -- "$@")
   else
-    show_usage
-    exit 1
+    show_usage; exit 1
   fi
-  local plain_payload="$LAST_PAYLOAD"
-  local payload_to_send
-  if ((encrypt)); then
-    payload_to_send="$(printf "%s" "$plain_payload" | encrypt_data)"
-  else
-    payload_to_send="$plain_payload"
-  fi
-  # Copy to local clipboard if enabled.  If encryption is on, copy the encrypted
-  # string; otherwise copy the plaintext.
-  if ((copy_local)); then
-    local clipboard_data
-    if ((encrypt)); then
-      clipboard_data="$payload_to_send"
-    else
-      clipboard_data="$plain_payload"
-    fi
-    printf "%s" "$clipboard_data" | "$COP_CMD"
-  fi
-  # Optionally sync to keyvalue
-  if ((network)); then
-    # Show confirm prompt with plaintext preview and lock icon if encrypted
-    if confirm_public_send "$plain_payload" "$encrypt"; then
-      send_to_keyvalue "$payload_to_send" || true
-    fi
-  fi
-  # Feedback message
-  if [[ "$mode" == "stdin" ]]; then
-    printf "📋 ${BOLD}${GREEN}Copied${RESET} from ${CYAN}stdin${RESET} (%s byte(s)).\n" "$bytes"
-  else
-    printf "📋 ${BOLD}${GREEN}Copied${RESET} from ${CYAN}files${RESET} (%s file(s), %s byte(s)).\n" "$#" "$bytes"
-  fi
+  
+  do_copy "$network" "$enc" "$copy_local" "$payload"
 }
 
 main "$@"
