@@ -24,6 +24,7 @@ mode=""
 bytes=0
 LAST_PAYLOAD=""
 PASTE_USED=""
+copy_flag=0
 
 # Logging helper for uniform prefix.
 log() {
@@ -33,32 +34,34 @@ log() {
 show_usage() {
   cat >&2 <<EOF_USAGE
 
-📋 ${BOLD}${GREEN}cop${RESET} ${CYAN}(clipboard helper)${RESET}
-   Copy to or paste from the system clipboard, with optional keyvalue sync and encryption.
+📋 ${BOLD}${GREEN}cop${RESET} — clipboard helper
 
-   ${YELLOW}Usage:${RESET}
-     Copy (default):
-       some_command | cop
-       cop < file.txt
-       cop file1.txt [file2.txt ...]
+${YELLOW}Usage:${RESET}
+  cop [${CYAN}OPTIONS${RESET}] [FILE...]
 
-     Paste from clipboard:
-       cop -p
+${YELLOW}Options:${RESET}
+  -p, --paste      Paste mode: print data from clipboard or remote
+  -n, --network    Use keyvalue.immanuel.co for remote sync (Note: public pasteboard)
+  -e, --encrypt    Encrypt or decrypt using \$COP_SECRET (AES‑256‑CBC)
+  -c, --copy       Copy fetched data to local clipboard (relevant with -n)
+  -h, --help       Show this help message
 
-     Network sync via keyvalue.immanuel.co (app key fixed in script):
-       Copy + sync:
-         cop -n            # from stdin
-         cop -n file.txt
-       Paste from keyvalue (key "${KEYVALUE_KEY}"):
-         cop -p -n
+${YELLOW}Notes:${RESET}
+  • Short options may be concatenated; for example, -pne is the same as -p -n -e.
+  • Without any options, cop reads from stdin or files and copies to the clipboard.
+  • When using -n, data is sent to or fetched from the remote key‑value store.
+  • Encryption only affects the remote payload; your local clipboard remains plaintext.
 
-     Encryption (local and/or keyvalue) using openssl and COP_SECRET:
-       Copy encrypted:
-         cop -e            # stdin -> encrypted in clipboard (and keyvalue if -n)
-       Paste encrypted:
-         cop -p -e         # clipboard/keyvalue -> decrypted to stdout
+${YELLOW}Examples:${RESET}
+  echo "hello" | cop           — copy plain text to clipboard
+  cop file.txt                — copy contents of file.txt
+  cop -n file.txt             — copy and sync file to remote
+  cop -n -e file.txt          — encrypt then sync file to remote
+  cop -p                      — paste from local clipboard
+  cop -p -n                   — paste from remote store
+  cop -p -n -e                — paste and decrypt remote content
+  cop -p -n -e -c             — paste, decrypt, and copy to clipboard
 
-   Mode is auto-detected for copy based on stdin and arguments.
 EOF_USAGE
 }
 
@@ -82,7 +85,7 @@ copy_from_files() {
 
 # Environment detection helpers for X11/Wayland, used to choose paste command.
 is_wayland() { [[ -n "${WAYLAND_DISPLAY:-}" && -S "/run/user/$(id -u)/${WAYLAND_DISPLAY}" ]]; }
-is_x11()     { [[ -n "${DISPLAY:-}" ]]; }
+is_x11() { [[ -n "${DISPLAY:-}" ]]; }
 
 # Candidate commands for pasting from the system clipboard.
 PASTE_CMDS=(
@@ -99,8 +102,8 @@ find_paste_cmd() {
   for cmd in "${PASTE_CMDS[@]}"; do
     command -v "$cmd" >/dev/null 2>&1 || continue
     case "$cmd" in
-      wl-paste) is_wayland || continue ;;
-      xclip | xsel) is_x11 || continue ;;
+    wl-paste) is_wayland || continue ;;
+    xclip | xsel) is_x11 || continue ;;
     esac
     echo "$cmd"
     return 0
@@ -117,18 +120,18 @@ get_local_clipboard() {
   fi
   PASTE_USED="$paste_cmd"
   case "$paste_cmd" in
-    wl-paste | pbpaste | termux-clipboard-get | getclip)
-      data="$($paste_cmd)"
-      ;;
-    powershell.exe)
-      data="$($paste_cmd -Command "Get-Clipboard")"
-      ;;
-    xclip)
-      data="$($paste_cmd -selection clipboard -o)"
-      ;;
-    xsel)
-      data="$($paste_cmd --clipboard --output)"
-      ;;
+  wl-paste | pbpaste | termux-clipboard-get | getclip)
+    data="$($paste_cmd)"
+    ;;
+  powershell.exe)
+    data="$($paste_cmd -Command "Get-Clipboard")"
+    ;;
+  xclip)
+    data="$($paste_cmd -selection clipboard -o)"
+    ;;
+  xsel)
+    data="$($paste_cmd --clipboard --output)"
+    ;;
   esac
   printf "%s" "$data"
 }
@@ -153,7 +156,7 @@ import sys, base64
 data = sys.stdin.read().encode()
 print(base64.b64encode(data).decode(), end='')
 PYEOF
-      <<<"$input"
+    <<<"$input"
     return 0
   fi
   # If we cannot encode, return the original string; this risks URL issues but ensures progress.
@@ -183,7 +186,8 @@ decode_base64() {
   fi
   # Try Python base64 decode
   if command -v python3 >/dev/null 2>&1; then
-    if out=$(python3 - <<'PYEOF' 2>/dev/null
+    if out=$(
+      python3 - <<'PYEOF' 2>/dev/null
 import sys, base64, binascii
 data = sys.stdin.read().strip()
 try:
@@ -191,7 +195,8 @@ try:
 except Exception:
     pass
 PYEOF
-      <<<"$input"); then
+      <<<"$input"
+    ); then
       if [[ -n "$out" ]]; then
         printf "%s" "$out"
         return 0
@@ -291,16 +296,23 @@ decrypt_data() {
 
 # Prompt user before syncing to the public key-value store.  Displays a truncated preview.
 confirm_public_send() {
+  # $1: plaintext payload to display in the prompt
+  # $2: encryption flag (1 if encryption is enabled, 0 otherwise)
   local payload="$1"
+  local enc_flag="${2:-0}"
   local max=128
   local preview
   local len=${#payload}
-  if (( len > max )); then
+  if ((len > max)); then
     preview="${payload:0:max}..."
   else
     preview="$payload"
   fi
-  printf "📋 ${YELLOW}Warning:${RESET} You are about to copy the following text to a public key-value store:\n" >&2
+  if ((enc_flag)); then
+    printf "📋 🔒 This text will be encrypted before upload. Unencrypted preview:\n" >&2
+  else
+    printf "📋 ${YELLOW}Warning:${RESET} You are about to copy the following text to a public key-value store:\n" >&2
+  fi
   printf "    \"%s\"\n" "$preview" >&2
   printf "📋 Proceed? [y/N] " >&2
   local ans=""
@@ -308,13 +320,13 @@ confirm_public_send() {
     read -r ans </dev/tty || ans=""
   fi
   case "$ans" in
-    y|Y|yes|YES)
-      return 0
-      ;;
-    *)
-      printf "📋 ${BOLD}${RED}[cop] Aborted keyvalue sync at user request.${RESET}\n" >&2
-      return 1
-      ;;
+  y | Y | yes | YES)
+    return 0
+    ;;
+  *)
+    printf "📋 ${BOLD}${RED}[cop] Aborted keyvalue sync at user request.${RESET}\n" >&2
+    return 1
+    ;;
   esac
 }
 
@@ -322,26 +334,28 @@ confirm_public_send() {
 paste_clipboard() {
   local use_network=$1
   local do_encrypt=$2
+  local copy_local=$3
   local raw out
-  if (( use_network )); then
+  if ((use_network)); then
     if ! raw="$(fetch_from_keyvalue)"; then
       log "Failed to fetch from keyvalue; aborting paste."
       exit 1
-    fi
-    if command -v "$COP_CMD" >/dev/null 2>&1; then
-      # Mirror into clipboard for convenience
-      printf "%s" "$raw" | "$COP_CMD" || true
     fi
     printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}keyvalue.immanuel.co${RESET} (app key: %s, key: %s).\n" "$KEYVALUE_APP_KEY" "$KEYVALUE_KEY" >&2
   else
     raw="$(get_local_clipboard)"
     printf "📋 ${BOLD}${GREEN}Pasted${RESET} from ${CYAN}clipboard${RESET} via ${CYAN}%s${RESET}.\n" "$PASTE_USED" >&2
   fi
-  if (( do_encrypt )); then
+  if ((do_encrypt)); then
     out="$(printf "%s" "$raw" | decrypt_data)"
   else
     out="$raw"
   fi
+  # Copy to local clipboard if requested
+  if ((copy_local)); then
+    printf "%s" "$out" | "$COP_CMD"
+  fi
+  # Print decrypted/plain text to stdout
   printf "%s" "$out"
 }
 
@@ -355,40 +369,80 @@ main() {
   if [[ "$script_name" == "pas" ]]; then
     set -- -p "$@"
   fi
+  # Parse options, accepting long names and combined short options (-pne)
   while [[ $# -gt 0 ]]; do
-    case "$1" in
-      -h|--help)
-        show_usage
-        exit 0
-        ;;
-      -p)
-        paste=1
-        shift
-        ;;
-      -n)
-        network=1
-        shift
-        ;;
-      -e)
-        encrypt=1
-        shift
-        ;;
-      --)
-        shift
-        break
-        ;;
-      -* )
-        log "Unknown option: $1"
-        show_usage
-        exit 1
-        ;;
-      * )
-        break
-        ;;
+    local arg="$1"
+    case "$arg" in
+    --help)
+      show_usage
+      exit 0
+      ;;
+    --paste)
+      paste=1
+      shift
+      continue
+      ;;
+    --network)
+      network=1
+      shift
+      continue
+      ;;
+    --encrypt)
+      encrypt=1
+      shift
+      continue
+      ;;
+    --copy)
+      copy_flag=1
+      shift
+      continue
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      # Handle combined short options like -pne
+      local i
+      for ((i = 1; i < ${#arg}; i++)); do
+        local ch="${arg:i:1}"
+        case "$ch" in
+        p) paste=1 ;;
+        n) network=1 ;;
+        e) encrypt=1 ;;
+        c) copy_flag=1 ;;
+        h)
+          show_usage
+          exit 0
+          ;;
+        *)
+          log "Unknown option: -$ch"
+          show_usage
+          exit 1
+          ;;
+        esac
+      done
+      shift
+      continue
+      ;;
+    *)
+      break
+      ;;
     esac
   done
-  if (( paste )); then
-    paste_clipboard "$network" "$encrypt"
+  # Determine whether to copy to local clipboard.  By default, copying
+  # occurs for local operations.  For network operations (-n), copying is
+  # disabled unless the user explicitly requested it (-c/--copy).
+  local copy_local=1
+  if ((network)); then
+    copy_local=0
+  fi
+  if ((copy_flag)); then
+    copy_local=1
+  fi
+
+  if ((paste)); then
+    paste_clipboard "$network" "$encrypt" "$copy_local"
     exit 0
   fi
   # Copy mode: gather payload
@@ -400,18 +454,25 @@ main() {
     show_usage
     exit 1
   fi
-  local payload="$LAST_PAYLOAD"
-  if (( encrypt )); then
-    payload="$(printf "%s" "$payload" | encrypt_data)"
+  local plain_payload="$LAST_PAYLOAD"
+  local payload_to_send
+  if ((encrypt)); then
+    payload_to_send="$(printf "%s" "$plain_payload" | encrypt_data)"
+  else
+    payload_to_send="$plain_payload"
   fi
-  # Copy to clipboard
-  printf "%s" "$payload" | "$COP_CMD"
+  # Copy to local clipboard if enabled (always copy plaintext)
+  if ((copy_local)); then
+    printf "%s" "$plain_payload" | "$COP_CMD"
+  fi
   # Optionally sync to keyvalue
-  if (( network )); then
-    if confirm_public_send "$payload"; then
-      send_to_keyvalue "$payload" || true
+  if ((network)); then
+    # Show confirm prompt with plaintext preview and lock icon if encrypted
+    if confirm_public_send "$plain_payload" "$encrypt"; then
+      send_to_keyvalue "$payload_to_send" || true
     fi
   fi
+  # Feedback message
   if [[ "$mode" == "stdin" ]]; then
     printf "📋 ${BOLD}${GREEN}Copied${RESET} from ${CYAN}stdin${RESET} (%s byte(s)).\n" "$bytes"
   else
