@@ -25,6 +25,7 @@ bytes=0
 LAST_PAYLOAD=""
 PASTE_USED=""
 copy_flag=0
+info_flag=0
 
 # Logging helper for uniform prefix.
 log() {
@@ -41,9 +42,10 @@ ${YELLOW}Usage:${RESET}
 
 ${YELLOW}Options:${RESET}
   -p, --paste      Paste mode: print data from clipboard or remote
-  -n, --network    Use keyvalue.immanuel.co for remote sync (Note: public pasteboard)
+  -n, --network    Use keyvalue.immanuel.co for remote sync
   -e, --encrypt    Encrypt or decrypt using \$COP_SECRET (AES‑256‑CBC)
   -c, --copy       Copy fetched data to local clipboard (relevant with -n)
+  -i, --info       Show info about available copy/pasteboard commands
   -h, --help       Show this help message
 
 ${YELLOW}Notes:${RESET}
@@ -51,9 +53,10 @@ ${YELLOW}Notes:${RESET}
   • Without any options, cop reads from stdin or files and copies to the clipboard.
   • When using -n, data is sent to or fetched from the remote key‑value store.
   • Encryption only affects the remote payload; your local clipboard remains plaintext.
+  • A symlink named 'pas' acts like running 'cop -p'.
 
 ${YELLOW}Examples:${RESET}
-  echo "hello" | cop           — copy plain text to clipboard
+  echo "hello" | cop          — copy plain text to clipboard
   cop file.txt                — copy contents of file.txt
   cop -n file.txt             — copy and sync file to remote
   cop -n -e file.txt          — encrypt then sync file to remote
@@ -61,6 +64,7 @@ ${YELLOW}Examples:${RESET}
   cop -p -n                   — paste from remote store
   cop -p -n -e                — paste and decrypt remote content
   cop -p -n -e -c             — paste, decrypt, and copy to clipboard
+  cop -p output.txt           — paste clipboard contents into output.txt
 
 EOF_USAGE
 }
@@ -330,6 +334,43 @@ confirm_public_send() {
   esac
 }
 
+# Print information about available clipboard helpers and which ones are in use.
+print_info() {
+  printf "📋 Clipboard helpers info:\n" >&2
+  # Report copy command
+  if command -v "$COP_CMD" >/dev/null 2>&1; then
+    printf "  Copy command (COP_CMD): %s (available)\n" "$COP_CMD" >&2
+  else
+    printf "  Copy command (COP_CMD): %s (not found)\n" "$COP_CMD" >&2
+  fi
+  printf "\n  Paste commands:\n" >&2
+  local cmd availability
+  for cmd in "${PASTE_CMDS[@]}"; do
+    availability="not found"
+    if command -v "$cmd" >/dev/null 2>&1; then
+      # Check environment restrictions
+      availability="available"
+      case "$cmd" in
+      wl-paste)
+        if ! is_wayland; then
+          availability="available but Wayland not detected"
+        fi
+        ;;
+      xclip | xsel)
+        if ! is_x11; then
+          availability="available but X11 not detected"
+        fi
+        ;;
+      esac
+    fi
+    printf "    %-20s %s\n" "$cmd" "$availability" >&2
+  done
+  # Determine which paste command would be used
+  local current
+  current=$(find_paste_cmd 2>/dev/null || echo "none")
+  printf "\n  Current paste command: %s\n" "$current" >&2
+}
+
 # Paste operation: fetch from keyvalue or local clipboard, optionally decrypt, and print.
 paste_clipboard() {
   local use_network=$1
@@ -377,6 +418,11 @@ main() {
       show_usage
       exit 0
       ;;
+    --info)
+      info_flag=1
+      shift
+      continue
+      ;;
     --paste)
       paste=1
       shift
@@ -411,6 +457,7 @@ main() {
         n) network=1 ;;
         e) encrypt=1 ;;
         c) copy_flag=1 ;;
+        i) info_flag=1 ;;
         h)
           show_usage
           exit 0
@@ -440,9 +487,41 @@ main() {
   if ((copy_flag)); then
     copy_local=1
   fi
+  # Emit a Marvin-esque sigh if -c is specified without -n (redundant)
+  if ((copy_flag)) && ((network == 0)); then
+    log "Marvin sighs: you specified -c without -n… I was going to copy anyway."
+  fi
+
+  # If --info was requested, display helper information and exit
+  if ((info_flag)); then
+    print_info
+    exit 0
+  fi
 
   if ((paste)); then
-    paste_clipboard "$network" "$encrypt" "$copy_local"
+    # If a file argument is provided, write the pasted content to that file.
+    local output_file=""
+    if (($# > 1)); then
+      log "Error: only one output file may be specified for paste mode"
+      exit 1
+    elif (($# == 1)); then
+      output_file="$1"
+      shift
+    fi
+    # Fetch/decrypt the content
+    local out
+    out=$(paste_clipboard "$network" "$encrypt" "$copy_local")
+    # Write to file or stdout
+    if [[ -n "$output_file" ]]; then
+      # Write output to specified file
+      printf "%s" "$out" >"$output_file"
+      # Report success
+      local out_bytes
+      out_bytes=$(printf "%s" "$out" | wc -c | tr -d ' ')
+      printf "📋 ${BOLD}${GREEN}Written${RESET} to ${CYAN}%s${RESET} (%s byte(s)).\n" "$output_file" "$out_bytes" >&2
+    else
+      printf "%s" "$out"
+    fi
     exit 0
   fi
   # Copy mode: gather payload
@@ -461,9 +540,16 @@ main() {
   else
     payload_to_send="$plain_payload"
   fi
-  # Copy to local clipboard if enabled (always copy plaintext)
+  # Copy to local clipboard if enabled.  If encryption is on, copy the encrypted
+  # string; otherwise copy the plaintext.
   if ((copy_local)); then
-    printf "%s" "$plain_payload" | "$COP_CMD"
+    local clipboard_data
+    if ((encrypt)); then
+      clipboard_data="$payload_to_send"
+    else
+      clipboard_data="$plain_payload"
+    fi
+    printf "%s" "$clipboard_data" | "$COP_CMD"
   fi
   # Optionally sync to keyvalue
   if ((network)); then
