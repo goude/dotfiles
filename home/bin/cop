@@ -5,81 +5,57 @@ set -euo pipefail
 
 # --- Configuration -----------------------------------------------------------
 KEYVALUE_APP_KEY="pk1vk7oj"
-KEYVALUE_KEY="cop"
+KEYVALUE_KEY="${KEYVALUE_KEY:-cop}"
 
 # --- Pastel Colors (soft, beautiful) -----------------------------------------
-C_ROSE=$'\033[38;5;218m'      # soft pink
-C_PEACH=$'\033[38;5;223m'     # warm peach  
-C_MINT=$'\033[38;5;158m'      # fresh mint
-C_SKY=$'\033[38;5;117m'       # morning sky
-C_LAVENDER=$'\033[38;5;183m'  # gentle lavender
-C_GOLD=$'\033[38;5;222m'      # sunrise gold
-C_CORAL=$'\033[38;5;210m'     # soft coral
-C_DIM=$'\033[2m'              # dimmed
-C_BOLD=$'\033[1m'             # bold
-C_RESET=$'\033[0m'            # reset
+C_ROSE=$'\033[38;5;218m'     # soft pink
+C_PEACH=$'\033[38;5;223m'    # warm peach
+C_MINT=$'\033[38;5;158m'     # fresh mint
+C_SKY=$'\033[38;5;117m'      # morning sky
+C_LAVENDER=$'\033[38;5;183m' # gentle lavender
+C_GOLD=$'\033[38;5;222m'     # sunrise gold
+C_CORAL=$'\033[38;5;210m'    # soft coral
+C_DIM=$'\033[2m'             # dimmed
+C_RESET=$'\033[0m'           # reset
+C_BOLD=$'\033[1m'            # bold
 
-# --- ASCII Art (configurable: COP_ART_SIZE=small|medium|large) ---------------
-COP_ART_SIZE="${COP_ART_SIZE:-medium}"
-
-art_small() {
+# --- ASCII Art (single default banner) ---------------------------------------
+art_banner() {
   cat <<'EOF'
-    ___  __  ___
-   / __\/ / / _ \
-  / /  / /_/ ___/
-  \_\  \__/\/    
+  ██████╗ ██████╗ ██████╗
+ ██╔════╝██╔═══██╗██╔══██╗
+ ██║     ██║   ██║██████╔╝
+ ██║     ██║   ██║██╔═══╝
+ ╚██████╗╚██████╔╝██║
+  ╚═════╝ ╚═════╝ ╚═╝
 EOF
 }
 
-art_medium() {
-  cat <<'EOF'
-       ██████╗ ██████╗ ██████╗ 
-      ██╔════╝██╔═══██╗██╔══██╗
-      ██║     ██║   ██║██████╔╝
-      ██║     ██║   ██║██╔═══╝ 
-      ╚██████╗╚██████╔╝██║     
-       ╚═════╝ ╚═════╝ ╚═╝     
-EOF
-}
-
-art_large() {
-  cat <<'EOF'
-       ▄████▄   ▒█████   ██▓███  
-      ▒██▀ ▀█  ▒██▒  ██▒▓██░  ██▒
-      ▒▓█    ▄ ▒██░  ██▒▓██░ ██▓▒
-      ▒▓▓▄ ▄██▒▒██   ██░▒██▄█▓▒ ▒
-      ▒ ▓███▀ ░░ ████▓▒░▒██▒ ░  ░
-      ░ ░▒ ▒  ░░ ▒░▒░▒░ ▒▓▒░ ░  ░
-EOF
-}
-
-show_horizon() {
-  # Pastel sunrise horizon
-  printf "  %s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s%s\n" \
-    "$C_SKY" "$C_MINT" "$C_PEACH" "$C_GOLD" "$C_CORAL" "$C_ROSE" \
-    "$C_LAVENDER" "$C_SKY" "$C_MINT" "$C_PEACH" "$C_GOLD" "$C_CORAL" \
-    "$C_ROSE" "$C_LAVENDER" "$C_SKY" "$C_RESET"
-  
-  # Art in gradient colors
-  local art_func="art_medium"
-  case "$COP_ART_SIZE" in
-    small) art_func="art_small" ;;
-    large) art_func="art_large" ;;
-  esac
-  
-  local colors=("$C_PEACH" "$C_GOLD" "$C_CORAL" "$C_ROSE" "$C_LAVENDER" "$C_SKY")
-  local i=0
-  while IFS= read -r line; do
-    printf "%s%s%s\n" "${colors[$((i % ${#colors[@]}))]}" "$line" "$C_RESET"
-    ((i++)) || true
-  done < <($art_func)
-  
-  # Bottom horizon line  
+print_rainbow_line() {
   printf "  %s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s━%s%s\n" \
     "$C_GOLD" "$C_PEACH" "$C_CORAL" "$C_ROSE" "$C_LAVENDER" \
     "$C_SKY" "$C_MINT" "$C_GOLD" "$C_PEACH" "$C_CORAL" \
     "$C_ROSE" "$C_LAVENDER" "$C_SKY" "$C_MINT" "$C_GOLD" \
     "$C_PEACH" "$C_CORAL" "$C_ROSE" "$C_LAVENDER" "$C_SKY" "$C_RESET"
+}
+
+show_horizon() {
+
+  # Top line
+  print_rainbow_line
+
+  # Art in gradient colors
+  local colors=("$C_PEACH" "$C_GOLD" "$C_CORAL" "$C_ROSE" "$C_LAVENDER" "$C_SKY")
+  local i=0
+  while IFS= read -r line; do
+    printf "%s%s%s\n" "${colors[$((i % ${#colors[@]}))]}" "$line" "$C_RESET"
+    ((i++)) || true
+  done < <(art_banner)
+
+  # Bottom line
+  print_rainbow_line
+
+  # Tagline
   printf "  %s☀ clipboard helper%s\n\n" "$C_DIM" "$C_RESET"
 }
 
@@ -93,6 +69,9 @@ show_usage() {
 ${C_GOLD}Usage:${C_RESET}
   cop [OPTIONS] [FILE...]
 
+${C_BOLD}cop${C_RESET} ${C_DIM}automatically uses your system's clipboard tools (pbcopy, wl-copy, xclip, etc.)
+so you don't have to remember which command works on which platform.${C_RESET}
+
 ${C_GOLD}Options:${C_RESET}
   ${C_SKY}-p${C_RESET}  --paste      Paste from clipboard or remote
   ${C_SKY}-n${C_RESET}  --network    Sync via keyvalue.immanuel.co
@@ -100,16 +79,22 @@ ${C_GOLD}Options:${C_RESET}
   ${C_SKY}-c${C_RESET}  --copy       Also copy fetched data locally (with -n)
   ${C_SKY}-i${C_RESET}  --info       Show clipboard command info
   ${C_SKY}-h${C_RESET}  --help       Show this help
+  ${C_SKY}  ${C_RESET}  --test       Run tests
 
 ${C_GOLD}Examples:${C_RESET}
   ${C_DIM}echo "hello" | cop${C_RESET}      copy text
   ${C_DIM}cop file.txt${C_RESET}            copy file contents
-  ${C_DIM}cop -n -e file.txt${C_RESET}      encrypt & sync to remote
-  ${C_DIM}cop -p${C_RESET}                  paste from clipboard
-  ${C_DIM}cop -pne${C_RESET}                paste, decrypt from remote
-  ${C_DIM}cop -p out.txt${C_RESET}          paste into file
+  ${C_DIM}cop < file.txt${C_RESET}          copy file contents
 
-${C_DIM}Symlink as 'pas' for paste mode. Options combine: -pne = -p -n -e${C_RESET}
+  ${C_DIM}cop -p${C_RESET}                  paste from clipboard
+  ${C_DIM}cop -p out.txt${C_RESET}          paste into file
+  ${C_DIM}cop -p > out.txt${C_RESET}        paste into file
+  ${C_DIM}pas${C_RESET}                     paste from clipboard (pas is a symlink to cop)
+
+  ${C_DIM}cop -ne file.txt${C_RESET}        encrypt & sync to remote
+  ${C_DIM}cop -pne${C_RESET}                decrypt & paste from remote
+
+${C_DIM}Around the survivors, a perimeter create!${C_RESET}
 EOF
 }
 
@@ -123,27 +108,34 @@ COPY_USED=""
 
 find_copy_cmd() {
   # Respect explicit override
-  [[ -n "${COP_CMD:-}" ]] && command -v "$COP_CMD" &>/dev/null && { echo "$COP_CMD"; return 0; }
+  [[ -n "${COP_CMD:-}" ]] && command -v "$COP_CMD" &>/dev/null && {
+    echo "$COP_CMD"
+    return 0
+  }
   for cmd in "${COPY_CMDS[@]}"; do
     command -v "$cmd" &>/dev/null || continue
     case "$cmd" in
-      wl-copy)    is_wayland || continue ;;
-      xclip|xsel) is_x11 || continue ;;
+    wl-copy) is_wayland || continue ;;
+    xclip | xsel) is_x11 || continue ;;
     esac
-    echo "$cmd"; return 0
+    echo "$cmd"
+    return 0
   done
   return 1
 }
 
 copy_to_clipboard() {
   local cmd
-  cmd=$(find_copy_cmd) || { log "No copy utility found"; exit 1; }
+  cmd=$(find_copy_cmd) || {
+    log "No copy utility found"
+    exit 1
+  }
   COPY_USED="$cmd"
   case "$cmd" in
-    wl-copy|pbcopy|termux-clipboard-set|putclip|clip.exe) "$cmd" ;;
-    xclip) "$cmd" -selection clipboard ;;
-    xsel)  "$cmd" --clipboard --input ;;
-    *)     "$cmd" ;;  # fallback for COP_CMD override
+  wl-copy | pbcopy | termux-clipboard-set | putclip | clip.exe) "$cmd" ;;
+  xclip) "$cmd" -selection clipboard ;;
+  xsel) "$cmd" --clipboard --input ;;
+  *) "$cmd" ;; # fallback for COP_CMD override
   esac
 }
 
@@ -155,23 +147,27 @@ find_paste_cmd() {
   for cmd in "${PASTE_CMDS[@]}"; do
     command -v "$cmd" &>/dev/null || continue
     case "$cmd" in
-      wl-paste)   is_wayland || continue ;;
-      xclip|xsel) is_x11 || continue ;;
+    wl-paste) is_wayland || continue ;;
+    xclip | xsel) is_x11 || continue ;;
     esac
-    echo "$cmd"; return 0
+    echo "$cmd"
+    return 0
   done
   return 1
 }
 
 get_local_clipboard() {
   local cmd
-  cmd=$(find_paste_cmd) || { log "No paste utility found"; exit 1; }
+  cmd=$(find_paste_cmd) || {
+    log "No paste utility found"
+    exit 1
+  }
   PASTE_USED="$cmd"
   case "$cmd" in
-    wl-paste|pbpaste|termux-clipboard-get|getclip) "$cmd" ;;
-    powershell.exe) "$cmd" -Command "Get-Clipboard" ;;
-    xclip)          "$cmd" -selection clipboard -o ;;
-    xsel)           "$cmd" --clipboard --output ;;
+  wl-paste | pbpaste | termux-clipboard-get | getclip) "$cmd" ;;
+  powershell.exe) "$cmd" -Command "Get-Clipboard" ;;
+  xclip) "$cmd" -selection clipboard -o ;;
+  xsel) "$cmd" --clipboard --output ;;
   esac
 }
 
@@ -183,7 +179,8 @@ b64_encode() {
 }
 
 b64_decode() {
-  local input; input=$(cat)
+  local input
+  input=$(cat)
   base64 --decode 2>/dev/null <<<"$input" && return 0
   base64 -D 2>/dev/null <<<"$input" && return 0
   base64 -d 2>/dev/null <<<"$input" && return 0
@@ -191,113 +188,204 @@ b64_decode() {
   printf "%s" "$input"
 }
 
+# --- Crypto helper -----------------------------------------------------------
+ensure_openssl() {
+  if ! command -v openssl &>/dev/null; then
+    log "openssl not found"
+    return 1
+  fi
+}
+
 # --- KeyValue API ------------------------------------------------------------
 kv_send() {
-  local encoded; encoded=$(printf "%s" "$1" | b64_encode)
+  local encoded
+  encoded=$(printf "%s" "$1" | b64_encode)
   local url="https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${KEYVALUE_APP_KEY}/${KEYVALUE_KEY}/${encoded}"
-  local status; status=$(curl -s -o /dev/null -w "%{http_code}" -X POST -d '' "$url")
-  [[ "$status" =~ ^20[01]$ ]] || { log "KeyValue POST failed ($status)"; return 1; }
+  local status
+  status=$(curl -s -o /dev/null -w "%{http_code}" -X POST -d '' "$url")
+  [[ "$status" =~ ^20[01]$ ]] || {
+    log "KeyValue POST failed ($status)"
+    return 1
+  }
   printf "📋 %s✓ Synced%s to %skeyvalue.immanuel.co%s\n" "$C_MINT" "$C_RESET" "$C_SKY" "$C_RESET" >&2
 }
 
 kv_fetch() {
   local url="https://keyvalue.immanuel.co/api/KeyVal/GetValue/${KEYVALUE_APP_KEY}/${KEYVALUE_KEY}"
-  local tmp; tmp=$(mktemp)
-  local status; status=$(curl -s -o "$tmp" -w "%{http_code}" "$url")
-  [[ "$status" == "200" ]] || { log "KeyValue GET failed ($status)"; rm -f "$tmp"; return 1; }
-  local raw; raw=$(<"$tmp"); rm -f "$tmp"
-  raw=${raw//$'\r'/}; raw=${raw//$'\n'/}
+  local tmp
+  tmp=$(mktemp)
+  local status
+  status=$(curl -s -o "$tmp" -w "%{http_code}" "$url")
+  [[ "$status" == "200" ]] || {
+    log "KeyValue GET failed ($status)"
+    rm -f "$tmp"
+    return 1
+  }
+  local raw
+  raw=$(<"$tmp")
+  rm -f "$tmp"
+  raw=${raw//$'\r'/}
+  raw=${raw//$'\n'/}
   # Strip surrounding quotes if present
   [[ "${raw:0:1}${raw: -1}" == '""' ]] && raw="${raw:1:${#raw}-2}"
   [[ -n "$raw" ]] && printf "%s" "$raw" | b64_decode || printf ""
 }
 
-# --- Encryption --------------------------------------------------------------
-ensure_crypto() {
-  command -v openssl &>/dev/null || { log "openssl not found"; exit 1; }
-  [[ -n "${COP_SECRET:-}" ]] || { log "COP_SECRET not set"; exit 1; }
-}
-
-encrypt() { ensure_crypto; openssl enc -aes-256-cbc -salt -pbkdf2 -pass env:COP_SECRET -base64; }
-decrypt() { ensure_crypto; openssl enc -d -aes-256-cbc -pbkdf2 -pass env:COP_SECRET -base64; }
-
 # --- User Confirmation -------------------------------------------------------
 confirm_send() {
-  local payload="$1" enc="$2" preview
-  ((${#payload} > 120)) && preview="${payload:0:120}…" || preview="$payload"
-  
+  # Test / non-interactive override: auto-confirm
+  if [[ "${COP_ASSUME_Y:-}" == "1" ]]; then
+    printf "📋 %s[TEST]%s auto-confirming upload\n" "$C_DIM" "$C_RESET" >&2
+    return 0
+  fi
+
+  local payload="$1"
+  local enc="$2"
+  local preview
+
+  if ((${#payload} > 120)); then
+    preview="${payload:0:120}…"
+  else
+    preview="$payload"
+  fi
+
   if ((enc)); then
     printf "📋 %s🔒 Will encrypt before upload:%s\n" "$C_LAVENDER" "$C_RESET" >&2
   else
     printf "📋 %s⚠ Public upload:%s\n" "$C_GOLD" "$C_RESET" >&2
   fi
+
   printf "   %s\"%s\"%s\n" "$C_DIM" "$preview" "$C_RESET" >&2
   printf "📋 Proceed? [y/N] " >&2
-  
+
   local ans=""
-  [[ -r /dev/tty ]] && read -r ans </dev/tty
-  [[ "$ans" =~ ^[Yy] ]] || { printf "📋 %sAborted%s\n" "$C_CORAL" "$C_RESET" >&2; return 1; }
+  if [[ -r /dev/tty ]]; then
+    read -r ans </dev/tty
+  else
+    read -r ans
+  fi
+
+  if [[ "$ans" =~ ^[Yy] ]]; then
+    return 0
+  fi
+
+  printf "📋 %sAborted%s\n" "$C_CORAL" "$C_RESET" >&2
+  return 1
 }
 
 # --- Info Display ------------------------------------------------------------
 print_info() {
   show_horizon >&2
   printf "%sClipboard Info%s\n\n" "$C_GOLD" "$C_RESET" >&2
-  
+
   # Copy commands
-  printf "\n  Copy commands:\n" >&2
+  printf "  Copy commands:\n" >&2
   for cmd in "${COPY_CMDS[@]}"; do
-    local status="$C_DIM─$C_RESET"
+    local symbol color note
+    symbol="─"
+    color="$C_DIM"
+    note=""
+
     if command -v "$cmd" &>/dev/null; then
-      status="$C_MINT✓$C_RESET"
+      symbol="✓"
+      color="$C_MINT"
       case "$cmd" in
-        wl-copy)    is_wayland || status="$C_GOLD○$C_RESET ${C_DIM}(no Wayland)${C_RESET}" ;;
-        xclip|xsel) is_x11 || status="$C_GOLD○$C_RESET ${C_DIM}(no X11)${C_RESET}" ;;
+      wl-copy)
+        if ! is_wayland; then
+          symbol="○"
+          color="$C_GOLD"
+          note=" (no Wayland)"
+        fi
+        ;;
+      xclip | xsel)
+        if ! is_x11; then
+          symbol="○"
+          color="$C_GOLD"
+          note=" (no X11)"
+        fi
+        ;;
       esac
     fi
-    printf "    %-18s %s\n" "$cmd" "$status" >&2
+
+    printf "    %-18s %s%s%s%s\n" "$cmd" "$color" "$symbol" "$note" "$C_RESET" >&2
   done
-  
-  # Copy command
-  local copy_cmd
-  copy_cmd=$(find_copy_cmd 2>/dev/null || echo "none")
-  
+
   # Paste commands
   printf "\n  Paste commands:\n" >&2
   for cmd in "${PASTE_CMDS[@]}"; do
-    local status="$C_DIM─$C_RESET"
+    local symbol color note
+    symbol="─"
+    color="$C_DIM"
+    note=""
+
     if command -v "$cmd" &>/dev/null; then
-      status="$C_MINT✓$C_RESET"
+      symbol="✓"
+      color="$C_MINT"
       case "$cmd" in
-        wl-paste)   is_wayland || status="$C_GOLD○$C_RESET ${C_DIM}(no Wayland)${C_RESET}" ;;
-        xclip|xsel) is_x11 || status="$C_GOLD○$C_RESET ${C_DIM}(no X11)${C_RESET}" ;;
+      wl-paste)
+        if ! is_wayland; then
+          symbol="○"
+          color="$C_GOLD"
+          note=" (no Wayland)"
+        fi
+        ;;
+      xclip | xsel)
+        if ! is_x11; then
+          symbol="○"
+          color="$C_GOLD"
+          note=" (no X11)"
+        fi
+        ;;
       esac
     fi
-    printf "    %-18s %s\n" "$cmd" "$status" >&2
+
+    printf "    %-18s %s%s%s%s\n" "$cmd" "$color" "$symbol" "$note" "$C_RESET" >&2
   done
-  
-  local current; current=$(find_paste_cmd 2>/dev/null || echo "none")
-  printf "\n  %sActive:%s copy=%s, paste=%s\n" "$C_SKY" "$C_RESET" "$copy_cmd" "$current" >&2
+
+  local copy_cmd
+  copy_cmd=$(find_copy_cmd 2>/dev/null || echo "none")
+  local current
+  current=$(find_paste_cmd 2>/dev/null || echo "none")
+
+  printf "\n  %sActive:%s copy=%s, paste=%s\n" \
+    "$C_SKY" "$C_RESET" "$copy_cmd" "$current" >&2
 }
 
 # --- Main Operations ---------------------------------------------------------
 do_paste() {
   local network=$1 enc=$2 copy_local=$3 output_file="${4:-}"
   local raw out
-  
+
   if ((network)); then
     raw=$(kv_fetch) || exit 1
-    printf "📋 %s✓ Fetched%s from %skeyvalue.immanuel.co%s\n" "$C_MINT" "$C_RESET" "$C_SKY" "$C_RESET" >&2
+    printf "📋 %s✓ Fetched%s from %skeyvalue.immanuel.co%s\n" \
+      "$C_MINT" "$C_RESET" "$C_SKY" "$C_RESET" >&2
   else
     raw=$(get_local_clipboard)
-    printf "📋 %s✓ Pasted%s via %s%s%s\n" "$C_MINT" "$C_RESET" "$C_SKY" "$PASTE_USED" "$C_RESET" >&2
+    local via="${PASTE_USED:-clipboard}"
+    printf "📋 %s✓ Pasted%s via %s%s%s\n" \
+      "$C_MINT" "$C_RESET" "$C_SKY" "$via" "$C_RESET" >&2
   fi
-  
-  ((enc)) && out=$(printf "%s" "$raw" | decrypt) || out="$raw"
+
+  if ((enc)); then
+    ensure_openssl || exit 1
+    if [[ -z "${COP_SECRET:-}" ]]; then
+      if [[ "${COP_TESTING:-}" == "1" ]]; then
+        log "[TEST] COP_SECRET not set (expected)"
+      else
+        log "COP_SECRET not set"
+      fi
+      exit 1
+    fi
+    out=$(printf "%s" "$raw" | openssl enc -d -aes-256-cbc -pbkdf2 -pass env:COP_SECRET -base64) || exit 1
+  else
+    out="$raw"
+  fi
+
   ((copy_local)) && printf "%s" "$out" | copy_to_clipboard
-  
+
   if [[ -n "$output_file" ]]; then
-    printf "%s" "$out" > "$output_file"
+    printf "%s" "$out" >"$output_file"
     printf "📋 %s✓ Written%s to %s%s%s (%d bytes)\n" \
       "$C_MINT" "$C_RESET" "$C_SKY" "$output_file" "$C_RESET" "${#out}" >&2
   else
@@ -308,77 +396,238 @@ do_paste() {
 do_copy() {
   local network=$1 enc=$2 copy_local=$3 payload="$4"
   local to_send
-  
-  ((enc)) && to_send=$(printf "%s" "$payload" | encrypt) || to_send="$payload"
+
+  if ((enc)); then
+    ensure_openssl || return 1
+    if [[ -z "${COP_SECRET:-}" ]]; then
+      if [[ "${COP_TESTING:-}" == "1" ]]; then
+        log "[TEST] COP_SECRET not set (expected)"
+      else
+        log "COP_SECRET not set"
+      fi
+      return 1
+    fi
+    # Base64-encoded ciphertext
+    to_send=$(printf "%s" "$payload" | openssl enc -aes-256-cbc -salt -pbkdf2 -pass env:COP_SECRET -base64) || return 1
+  else
+    to_send="$payload"
+  fi
+
   ((copy_local)) && printf "%s" "$to_send" | copy_to_clipboard
-  
+
   if ((network)); then
     confirm_send "$payload" "$enc" && kv_send "$to_send"
   fi
-  
+
   printf "📋 %s✓ Copied%s %d bytes\n" "$C_MINT" "$C_RESET" "${#payload}"
+}
+
+# --- Tests -------------------------------------------------------------------
+cop_run_tests() {
+  (
+    set -euo pipefail
+
+    COP_BIN="$0"
+
+    fail() {
+      printf 'TEST FAIL: %s\n' "$*" >&2
+      exit 1
+    }
+
+    assert_eq() {
+      local msg="$1" got="$2" expect="$3"
+      if [[ "$got" != "$expect" ]]; then
+        printf 'ASSERT EQ FAIL: %s\n' "$msg" >&2
+        printf '  got:    [%s]\n' "$got" >&2
+        printf '  expect: [%s]\n' "$expect" >&2
+        exit 1
+      fi
+    }
+
+    assert_ne() {
+      local msg="$1" got="$2" expect="$3"
+      if [[ "$got" == "$expect" ]]; then
+        printf 'ASSERT NE FAIL: %s\n' "$msg" >&2
+        printf '  got: [%s]\n' "$got" >&2
+        exit 1
+      fi
+    }
+
+    assert_fail() {
+      local msg="$1"
+      shift
+      if "$@"; then
+        printf 'ASSERT FAIL FAIL: %s (command succeeded, but should fail)\n' "$msg" >&2
+        exit 1
+      fi
+    }
+
+    # Use an isolated remote key so tests don't clobber your real shared key.
+    export KEYVALUE_KEY="cop-test-$RANDOM-$$"
+    # Auto-confirm uploads during tests.
+    export COP_ASSUME_Y="1"
+    # Flag that we're in test mode (for logging tweaks).
+    export COP_TESTING="1"
+
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf "$tmpdir"' EXIT
+    cd "$tmpdir"
+
+    printf 'Running cop self tests in %s\n' "$tmpdir"
+
+    printf 'FILE content %s\n' "$RANDOM" >FILE
+    printf 'FILE2 content %s\n' "$RANDOM" >FILE2
+    printf 'FILE3 content %s\n' "$RANDOM" >FILE3
+
+    f1="$(cat FILE)"
+    f2="$(cat FILE2)"
+    f3="$(cat FILE3)"
+
+    unset COP_SECRET || true
+
+    # 1) local copy + paste
+    "$COP_BIN" FILE
+    out="$("$COP_BIN" -p)"
+    assert_eq "cop -p after 'cop FILE'" "$out" "$f1"
+
+    # 2) cop -p FILE writes clipboard back into FILE (no stdout expected)
+    "$COP_BIN" -p FILE
+    out="$(cat FILE)"
+    assert_eq "cop -p FILE after 'cop FILE'" "$out" "$f1"
+
+    # 3) network -n (unencrypted)
+    "$COP_BIN" -n FILE2
+    out="$("$COP_BIN" -pn)"
+    assert_eq "cop -pn after '-n FILE2'" "$out" "$f2"
+
+    out="$("$COP_BIN" -p)"
+    assert_eq "cop -p still FILE after network copy" "$out" "$f1"
+
+    # 4) encrypted failure without COP_SECRET
+    assert_fail "cop -ne FILE3 must fail without COP_SECRET" \
+      "$COP_BIN" -ne FILE3
+
+    # 5) encrypted network ops with dummy key (no decrypt-from-remote in test)
+    export COP_SECRET="dummy-test-secret"
+
+    "$COP_BIN" -ne FILE3
+
+    # Remote encrypted value: pn should not equal plaintext FILE3
+    out="$("$COP_BIN" -pn)"
+    assert_ne "cop -pn must not equal FILE3 when encrypted" "$out" "$f3"
+
+    # Local remains FILE
+    out="$("$COP_BIN" -p)"
+    assert_eq "cop -p still FILE after encrypted ops" "$out" "$f1"
+
+    # 6) stdin copy cases
+    "$COP_BIN" <FILE2
+    out="$("$COP_BIN" -p)"
+    assert_eq "cop -p after stdin FILE2" "$out" "$f2"
+
+    cat FILE3 | "$COP_BIN"
+    out="$("$COP_BIN" -p)"
+    assert_eq "cop -p after stdin FILE3" "$out" "$f3"
+
+    # 7) concatenation of multiple files
+    "$COP_BIN" FILE FILE2 FILE3
+    expect_concat="$(cat FILE FILE2 FILE3)"
+    out="$("$COP_BIN" -p)"
+    assert_eq "cop -p after concatenation" "$out" "$expect_concat"
+
+    echo "All cop self tests passed."
+  )
 }
 
 # --- Entry Point -------------------------------------------------------------
 main() {
   local paste=0 network=0 enc=0 copy_flag=0 info_flag=0
-  
+
   # Symlink detection
   [[ "$(basename "$0")" == "pas" ]] && paste=1
-  
+
+  # Run tests
+  if [[ "${1:-}" == "--test" ]]; then
+    shift
+    cop_run_tests
+    exit 0
+  fi
+
   # Parse options
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --help)    show_usage; exit 0 ;;
-      --info)    info_flag=1 ;;
-      --paste)   paste=1 ;;
-      --network) network=1 ;;
-      --encrypt) enc=1 ;;
-      --copy)    copy_flag=1 ;;
-      --)        shift; break ;;
-      -*)
-        for ((i=1; i<${#1}; i++)); do
-          case "${1:i:1}" in
-            h) show_usage; exit 0 ;;
-            i) info_flag=1 ;;
-            p) paste=1 ;;
-            n) network=1 ;;
-            e) enc=1 ;;
-            c) copy_flag=1 ;;
-            *) log "Unknown: -${1:i:1}"; show_usage; exit 1 ;;
-          esac
-        done ;;
-      *) break ;;
+    --help)
+      show_usage
+      exit 0
+      ;;
+    --info) info_flag=1 ;;
+    --paste) paste=1 ;;
+    --network) network=1 ;;
+    --encrypt) enc=1 ;;
+    --copy) copy_flag=1 ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      for ((i = 1; i < ${#1}; i++)); do
+        case "${1:i:1}" in
+        h)
+          show_usage
+          exit 0
+          ;;
+        i) info_flag=1 ;;
+        p) paste=1 ;;
+        n) network=1 ;;
+        e) enc=1 ;;
+        c) copy_flag=1 ;;
+        *)
+          log "Unknown: -${1:i:1}"
+          show_usage
+          exit 1
+          ;;
+        esac
+      done
+      ;;
+    *) break ;;
     esac
     shift
   done
-  
+
   # Copy-to-local logic: default on unless network mode (then explicit -c needed)
   local copy_local=$((network ? copy_flag : 1))
-  
+
   # Marvin's sigh
   ((copy_flag && !network)) && log "${C_DIM}*sigh* -c without -n… I was copying anyway${C_RESET}"
-  
+
   # Info mode
-  ((info_flag)) && { print_info; exit 0; }
-  
+  ((info_flag)) && {
+    print_info
+    exit 0
+  }
+
   # Paste mode
   if ((paste)); then
-    (($# > 1)) && { log "Only one output file allowed"; exit 1; }
+    (($# > 1)) && {
+      log "Only one output file allowed"
+      exit 1
+    }
     do_paste "$network" "$enc" "$copy_local" "${1:-}"
     exit 0
   fi
-  
+
   # Copy mode
   local payload
-  if [[ ! -t 0 ]]; then
-    payload=$(cat)
-  elif [[ $# -gt 0 ]]; then
+  if [[ $# -gt 0 ]]; then
+    # Prefer explicit files over stdin, even in pipelines.
     payload=$(cat -- "$@")
+  elif [[ ! -t 0 ]]; then
+    payload=$(cat)
   else
-    show_usage; exit 1
+    show_usage
+    exit 1
   fi
-  
+
   do_copy "$network" "$enc" "$copy_local" "$payload"
 }
 
