@@ -4,8 +4,7 @@
 set -euo pipefail
 
 # --- Configuration -----------------------------------------------------------
-KEYVALUE_APP_KEY="pk1vk7oj"
-KEYVALUE_KEY="${KEYVALUE_KEY:-cop}"
+COP_SERVICE_URL="${COP_SERVICE_URL:-https://cop.daniel-goude.workers.dev/cop}"
 
 # --- Pastel Colors (soft, beautiful) -----------------------------------------
 C_ROSE=$'\033[38;5;218m'     # soft pink
@@ -74,7 +73,7 @@ so you don't have to remember which command works on which platform.${C_RESET}
 
 ${C_GOLD}Options:${C_RESET}
   ${C_SKY}-p${C_RESET}  --paste      Paste from clipboard or remote
-  ${C_SKY}-n${C_RESET}  --network    Sync via keyvalue.immanuel.co
+  ${C_SKY}-n${C_RESET}  --network    Sync via cloud clipboard service
   ${C_SKY}-e${C_RESET}  --encrypt    AES-256-CBC encrypt/decrypt (\$COP_SECRET)
   ${C_SKY}-c${C_RESET}  --copy       Also copy fetched data locally (with -n)
   ${C_SKY}-i${C_RESET}  --info       Show clipboard command info
@@ -196,39 +195,37 @@ ensure_openssl() {
   fi
 }
 
-# --- KeyValue API ------------------------------------------------------------
+# --- Cloud clipboard API (via Worker) ---------------------------------------
 kv_send() {
-  local encoded
-  encoded=$(printf "%s" "$1" | b64_encode)
-  local url="https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${KEYVALUE_APP_KEY}/${KEYVALUE_KEY}/${encoded}"
+  # Expects: $1 is already base64 (plaintext or ciphertext, depending on mode)
+  local data="$1"
   local status
-  status=$(curl -s -o /dev/null -w "%{http_code}" -X POST -d '' "$url")
+  status=$(curl -s -o /dev/null -w "%{http_code}" -X POST --data-binary "$data" "$COP_SERVICE_URL")
   [[ "$status" =~ ^20[01]$ ]] || {
-    log "KeyValue POST failed ($status)"
+    log "Cloud clipboard POST failed ($status)"
     return 1
   }
-  printf "📋 %s✓ Synced%s to %skeyvalue.immanuel.co%s\n" "$C_MINT" "$C_RESET" "$C_SKY" "$C_RESET" >&2
+  printf "📋 %s✓ Synced%s to %scloud clipboard%s\n" \
+    "$C_MINT" "$C_RESET" "$C_SKY" "$C_RESET" >&2
 }
 
 kv_fetch() {
-  local url="https://keyvalue.immanuel.co/api/KeyVal/GetValue/${KEYVALUE_APP_KEY}/${KEYVALUE_KEY}"
   local tmp
   tmp=$(mktemp)
   local status
-  status=$(curl -s -o "$tmp" -w "%{http_code}" "$url")
+  status=$(curl -s -o "$tmp" -w "%{http_code}" "$COP_SERVICE_URL")
   [[ "$status" == "200" ]] || {
-    log "KeyValue GET failed ($status)"
+    log "Cloud clipboard GET failed ($status)"
     rm -f "$tmp"
     return 1
   }
   local raw
   raw=$(<"$tmp")
   rm -f "$tmp"
+  # Trim trailing CR/LF but don't touch content
   raw=${raw//$'\r'/}
-  raw=${raw//$'\n'/}
-  # Strip surrounding quotes if present
-  [[ "${raw:0:1}${raw: -1}" == '""' ]] && raw="${raw:1:${#raw}-2}"
-  [[ -n "$raw" ]] && printf "%s" "$raw" | b64_decode || printf ""
+  raw=${raw%$'\n'}
+  printf "%s" "$raw"
 }
 
 # --- User Confirmation -------------------------------------------------------
@@ -358,7 +355,7 @@ do_paste() {
 
   if ((network)); then
     raw=$(kv_fetch) || exit 1
-    printf "📋 %s✓ Fetched%s from %skeyvalue.immanuel.co%s\n" \
+    printf "📋 %s✓ Fetched%s from %scloud clipboard%s\n" \
       "$C_MINT" "$C_RESET" "$C_SKY" "$C_RESET" >&2
   else
     raw=$(get_local_clipboard)
@@ -377,9 +374,16 @@ do_paste() {
       fi
       exit 1
     fi
+    # raw is expected to be base64(ciphertext) in both local and network modes.
     out=$(printf "%s" "$raw" | openssl enc -d -aes-256-cbc -pbkdf2 -pass env:COP_SECRET -base64) || exit 1
   else
-    out="$raw"
+    if ((network)); then
+      # raw is base64(plaintext) from the cloud clipboard
+      out=$(printf "%s" "$raw" | b64_decode)
+    else
+      # local clipboard is plain text
+      out="$raw"
+    fi
   fi
 
   ((copy_local)) && printf "%s" "$out" | copy_to_clipboard
@@ -395,7 +399,7 @@ do_paste() {
 
 do_copy() {
   local network=$1 enc=$2 copy_local=$3 payload="$4"
-  local to_send
+  local to_send net_payload
 
   if ((enc)); then
     ensure_openssl || return 1
@@ -409,14 +413,17 @@ do_copy() {
     fi
     # Base64-encoded ciphertext
     to_send=$(printf "%s" "$payload" | openssl enc -aes-256-cbc -salt -pbkdf2 -pass env:COP_SECRET -base64) || return 1
+    net_payload="$to_send"  # already base64(ciphertext)
   else
     to_send="$payload"
+    # For non-encrypted network sync, store base64(plaintext)
+    net_payload=$(printf "%s" "$payload" | b64_encode)
   fi
 
   ((copy_local)) && printf "%s" "$to_send" | copy_to_clipboard
 
   if ((network)); then
-    confirm_send "$payload" "$enc" && kv_send "$to_send"
+    confirm_send "$payload" "$enc" && kv_send "$net_payload"
   fi
 
   printf "📋 %s✓ Copied%s %d bytes\n" "$C_MINT" "$C_RESET" "${#payload}"
@@ -462,8 +469,6 @@ cop_run_tests() {
       fi
     }
 
-    # Use an isolated remote key so tests don't clobber your real shared key.
-    export KEYVALUE_KEY="cop-test-$RANDOM-$$"
     # Auto-confirm uploads during tests.
     export COP_ASSUME_Y="1"
     # Flag that we're in test mode (for logging tweaks).
@@ -618,7 +623,7 @@ main() {
 
   # Copy mode
   local payload
-  if [[ $# -gt 0 ]]; then
+  if [[ $# > 0 ]]; then
     # Prefer explicit files over stdin, even in pipelines.
     payload=$(cat -- "$@")
   elif [[ ! -t 0 ]]; then
