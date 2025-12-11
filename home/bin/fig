@@ -1,0 +1,381 @@
+#!/usr/bin/env bash
+# fig – File Insight Glance: compact file summary with optional brief view
+
+set -u
+
+have_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+C_RESET=$'\033[0m'
+C_DIM=$'\033[2m'
+C_BOLD=$'\033[1m'
+C_RED=$'\033[31m'
+C_GREEN=$'\033[32m'
+C_YELLOW=$'\033[33m'
+C_BLUE=$'\033[34m'
+C_MAGENTA=$'\033[35m'
+C_CYAN=$'\033[36m'
+
+MISSING=()
+
+BAT_CMD=""
+if have_cmd bat; then
+  BAT_CMD="bat"
+elif have_cmd batcat; then
+  BAT_CMD="batcat"
+fi
+
+note_missing() {
+  MISSING+=("$1")
+}
+
+usage() {
+  cat <<EOF
+${C_BOLD}fig${C_RESET} – File Insight Glance
+
+Usage:
+  fig [OPTIONS] FILE
+
+Options:
+  -b, --brief     Show a brief summary (no histogram/binwalk/hex)
+  -h, --help      Show this help
+
+Examples:
+  fig data.csv
+  fig -b binary.dat
+EOF
+}
+
+# ---- sections --------------------------------------------------------------
+
+print_header() {
+  local file=$1
+  local abs type mime size size_h mod acc
+
+  if have_cmd realpath; then
+    abs=$(realpath -- "$file" 2>/dev/null || printf '%s' "$file")
+  else
+    abs=$(cd "$(dirname -- "$file")" 2>/dev/null && pwd)/$(basename -- "$file")
+  fi
+
+  if have_cmd file; then
+    type=$(file -b -- "$file" 2>/dev/null || echo "?")
+    mime=$(file -b --mime -- "$file" 2>/dev/null || echo "?")
+  else
+    type="(install 'file' for type info)"
+    mime="?"
+    note_missing "file"
+  fi
+
+  if have_cmd stat; then
+    if stat -c '%s' "$file" >/dev/null 2>&1; then
+      size=$(stat -c '%s' -- "$file")
+      size_h=$(numfmt --to=iec --padding=0 "$size" 2>/dev/null || echo "${size}B")
+      mod=$(stat -c '%y' -- "$file")
+      acc=$(stat -c '%x' -- "$file")
+    else
+      size=$(stat -f '%z' "$file" 2>/dev/null || echo "?")
+      size_h=$(numfmt --to=iec --padding=0 "$size" 2>/dev-null || echo "${size}B")
+      mod=$(stat -f '%Sm' "$file" 2>/dev/null || echo "?")
+      acc=$(stat -f '%Sa' "$file" 2>/dev/null || echo "?")
+    fi
+  else
+    size=$(wc -c <"$file" 2>/dev/null || echo "?")
+    size_h="${size}B"
+    mod="?"
+    acc="?"
+    note_missing "stat"
+  fi
+
+  printf '%s\n' "${C_BLUE}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${C_RESET}"
+  printf '%s\n' "${C_BLUE}┃${C_RESET} 📄 ${C_BOLD}${file}${C_RESET}"
+  printf '%s\n' "${C_BLUE}┃${C_RESET}   ${C_DIM}${abs}${C_RESET}"
+  printf '%s\n' "${C_BLUE}┃${C_RESET}   🧾 Type: ${type}"
+  printf '%s\n' "${C_BLUE}┃${C_RESET}   🧬 MIME: ${mime}"
+  printf '%s\n' "${C_BLUE}┃${C_RESET}   📏 Size: ${size_h} (${size} bytes)"
+  printf '%s\n' "${C_BLUE}┃${C_RESET}   🕒 Modified: ${mod}"
+  printf '%s\n' "${C_BLUE}┃${C_RESET}   👁  Accessed: ${acc}"
+  printf '%s\n' "${C_BLUE}┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛${C_RESET}"
+}
+
+print_hashes() {
+  local file=$1
+  printf '%s\n' "${C_MAGENTA}┌─ 🔐 Identity (hashes) ───────────────────────────────────────┐${C_RESET}"
+
+  if have_cmd sha256sum; then
+    printf '%s ' "${C_MAGENTA}│${C_RESET}   SHA256:"
+    sha256sum -- "$file" 2>/dev/null | awk '{print $1}'
+  else
+    printf '%s\n' "${C_MAGENTA}│${C_RESET}   SHA256: ${C_RED}sha256sum not found${C_RESET}"
+    note_missing "sha256sum"
+  fi
+
+  if have_cmd md5sum; then
+    printf '%s ' "${C_MAGENTA}│${C_RESET}   MD5   :"
+    md5sum -- "$file" 2>/dev/null | awk '{print $1}'
+  fi
+
+  if have_cmd ssdeep; then
+    local ss
+    ss=$(ssdeep -- "$file" 2>/dev/null | awk 'NR==2{print $1}')
+    if [[ -n "$ss" ]]; then
+      printf '%s\n' "${C_MAGENTA}│${C_RESET}   Fuzzy : ${ss}"
+    else
+      printf '%s\n' "${C_MAGENTA}│${C_RESET}   Fuzzy : ${C_DIM}(no ssdeep data)${C_RESET}"
+    fi
+  else
+    printf '%s\n' "${C_MAGENTA}│${C_RESET}   Fuzzy : ${C_DIM}(ssdeep not installed)${C_RESET}"
+  fi
+
+  printf '%s\n' "${C_MAGENTA}└───────────────────────────────────────────────────────────────┘${C_RESET}"
+}
+
+print_text_stats() {
+  local file=$1
+  printf '%s\n' "${C_CYAN}┌─ ✏️  Text / record structure ────────────────────────────────┐${C_RESET}"
+
+  if have_cmd wc; then
+    local out
+    out=$(wc -- "$file" 2>/dev/null)
+    printf '%s\n' "${C_CYAN}│${C_RESET}   $(echo "$out" | awk '{printf "Lines: %s  Words: %s  Bytes: %s", $1,$2,$3}')"
+  else
+    printf '%s\n' "${C_CYAN}│${C_RESET}   ${C_RED}wc not found${C_RESET}"
+    note_missing "wc"
+  fi
+
+  if have_cmd awk; then
+    local max_len
+    max_len=$(awk '{ if (length > max) max = length } END { print max+0 }' "$file" 2>/dev/null)
+    if [[ -n "$max_len" ]]; then
+      printf '%s\n' "${C_CYAN}│${C_RESET}   Longest line: ${max_len} chars"
+    fi
+  fi
+
+  if have_cmd grep; then
+    if LC_ALL=C grep -qP '[^\x00-\x7F]' "$file" 2>/dev/null; then
+      printf '%s\n' "${C_CYAN}│${C_RESET}   Charset: ${C_YELLOW}Non-ASCII bytes detected${C_RESET}"
+    else
+      printf '%s\n' "${C_CYAN}│${C_RESET}   Charset: ASCII-clean (or binary-safe sample)"
+    fi
+  fi
+
+  printf '%s\n' "${C_CYAN}└───────────────────────────────────────────────────────────────┘${C_RESET}"
+}
+
+print_entropy_and_compression() {
+  local file=$1
+  printf '%s\n' "${C_YELLOW}┌─ 🎲 Structure & compressibility ─────────────────────────────┐${C_RESET}"
+
+  if have_cmd ent; then
+    local ent_val
+    ent_val=$(ent "$file" 2>/dev/null | awk '/Entropy/ {print $3, $4}')
+    if [[ -n "$ent_val" ]]; then
+      printf '%s\n' "${C_YELLOW}│${C_RESET}   Entropy: ${ent_val}"
+    fi
+  else
+    printf '%s\n' "${C_YELLOW}│${C_RESET}   Entropy: ${C_DIM}ent not installed${C_RESET}"
+    note_missing "ent"
+  fi
+
+  if have_cmd gzip && have_cmd wc; then
+    local orig gz
+    orig=$(wc -c <"$file" 2>/dev/null | tr -d ' ' || echo 0)
+    if ((orig > 0)); then
+      gz=$(gzip -c "$file" 2>/dev/null | wc -c | tr -d ' ')
+      if ((gz > 0)); then
+        local ratio
+        ratio=$((100 * gz / orig))
+        printf '%s\n' "${C_YELLOW}│${C_RESET}   gzip size: ${gz} bytes (~${ratio}%% of original)"
+        # above line prints %% literally because of printf; leave as is
+      fi
+    fi
+  else
+    printf '%s\n' "${C_YELLOW}│${C_RESET}   gzip: ${C_DIM}gzip or wc not installed${C_RESET}"
+  fi
+
+  printf '%s\n' "${C_YELLOW}└───────────────────────────────────────────────────────────────┘${C_RESET}"
+}
+
+print_fs_info() {
+  local file=$1
+  printf '%s\n' "${C_GREEN}┌─ 💽 Filesystem ───────────────────────────────────────────────┐${C_RESET}"
+
+  if have_cmd stat; then
+    if stat -c '%i %h' "$file" >/dev/null 2>&1; then
+      local inode links
+      read -r inode links < <(stat -c '%i %h' "$file")
+      printf '%s\n' "${C_GREEN}│${C_RESET}   Inode: ${inode}   Links: ${links}"
+    fi
+  fi
+
+  if have_cmd filefrag; then
+    local fr
+    fr=$(filefrag -v "$file" 2>/dev/null | awk '/^ *[0-9]/ {c++} END {print c+0}')
+    if [[ -n "$fr" && "$fr" != "0" ]]; then
+      printf '%s\n' "${C_GREEN}│${C_RESET}   Extents (approx): ${fr}"
+    fi
+  else
+    printf '%s\n' "${C_GREEN}│${C_RESET}   Extents: ${C_DIM}filefrag not installed${C_RESET}"
+  fi
+
+  if have_cmd getfacl; then
+    printf '%s\n' "${C_GREEN}│${C_RESET}   ACL: ${C_DIM}getfacl available (run manually for details)${C_RESET}"
+  fi
+
+  if have_cmd getfattr; then
+    printf '%s\n' "${C_GREEN}│${C_RESET}   xattr: ${C_DIM}getfattr available (run manually for details)${C_RESET}"
+  fi
+
+  printf '%s\n' "${C_GREEN}└───────────────────────────────────────────────────────────────┘${C_RESET}"
+}
+
+print_preview() {
+  local file=$1
+  printf '%s\n' "${C_BLUE}┌─ 👀 Content preview ─────────────────────────────────────────┐${C_RESET}"
+
+  if have_cmd file && file --mime -- "$file" 2>/dev/null | grep -q 'text/'; then
+    printf '%s\n' "${C_BLUE}│${C_RESET}   ${C_DIM}First 5 lines:${C_RESET}"
+    if [[ -n "$BAT_CMD" ]]; then
+      "$BAT_CMD" --style=plain --color=always --paging=never --line-range 1:5 -- "$file" 2>/dev/null |
+        sed "s/^/${C_BLUE}│${C_RESET}     /"
+    else
+      head -n 5 -- "$file" 2>/dev/null | sed "s/^/${C_BLUE}│${C_RESET}     /"
+    fi
+    printf '%s\n' "${C_BLUE}│${C_RESET}   ${C_DIM}… Last 3 lines:${C_RESET}"
+    tail -n 3 -- "$file" 2>/dev/null | sed "s/^/${C_BLUE}│${C_RESET}     /"
+  else
+    printf '%s\n' "${C_BLUE}│${C_RESET}   ${C_DIM}Non-text or unknown encoding; hex/bytes below.${C_RESET}"
+  fi
+
+  printf '%s\n' "${C_BLUE}└───────────────────────────────────────────────────────────────┘${C_RESET}"
+}
+
+print_hex_preview() {
+  local file=$1
+  printf '%s\n' "${C_BLUE}┌─ 🔍 Hex preview (first 128 bytes) ───────────────────────────┐${C_RESET}"
+  if have_cmd hexdump; then
+    hexdump -Cv -n 128 -- "$file" 2>/dev/null | sed "s/^/${C_BLUE}│${C_RESET}     /"
+  elif have_cmd xxd; then
+    xxd -g 1 -l 128 -- "$file" 2>/dev/null | sed "s/^/${C_BLUE}│${C_RESET}     /"
+  else
+    printf '%s\n' "${C_BLUE}│${C_RESET}   ${C_RED}hexdump/xxd not installed; hex preview skipped${C_RESET}"
+    note_missing "hexdump/xxd"
+  fi
+  printf '%s\n' "${C_BLUE}└───────────────────────────────────────────────────────────────┘${C_RESET}"
+}
+
+print_extended() {
+  local file=$1
+
+  printf '%s\n' "${C_MAGENTA}┌─ 📊 Byte histogram (top 10) ─────────────────────────────────┐${C_RESET}"
+  if have_cmd od && have_cmd sort && have_cmd head && have_cmd grep && have_cmd awk; then
+    od -An -t u1 -- "$file" 2>/dev/null |
+      tr ' ' '\n' |
+      grep -E '^[0-9]+$' |
+      sort -n |
+      uniq -c |
+      sort -nr |
+      head -n 10 |
+      awk -v p="${C_MAGENTA}│${C_RESET}   " '{printf "%s%6s × byte %3s\n", p, $1, $2}'
+  else
+    printf '%s\n' "${C_MAGENTA}│${C_RESET}   ${C_RED}od/sort/head/grep/awk missing; histogram skipped${CRESET}"
+    note_missing "od/sort/head/grep/awk"
+  fi
+  printf '%s\n' "${C_MAGENTA}└───────────────────────────────────────────────────────────────┘${C_RESET}"
+
+  printf '%s\n' "${C_YELLOW}┌─ 🧩 Embedded data (binwalk) ─────────────────────────────────┐${C_RESET}"
+  if have_cmd binwalk; then
+    local found=0
+    while IFS= read -r line; do
+      # skip empty and header lines
+      [[ -z "$line" ]] && continue
+      [[ "$line" =~ ^DECIMAL ]] && continue
+      [[ "$line" =~ ^-{3,} ]] && continue
+      found=1
+      printf '%s\n' "${C_YELLOW}│${C_RESET}   ${line}"
+    done < <(binwalk "$file" 2>/dev/null | head -n 20)
+    if ((found == 0)); then
+      printf '%s\n' "${C_YELLOW}│${C_RESET}   ${C_DIM}No obvious embedded signatures (binwalk top scan).${C_RESET}"
+    fi
+  else
+    printf '%s\n' "${C_YELLOW}│${CRESET}   ${C_DIM}binwalk not installed; embedded scan skipped.${C_RESET}"
+    note_missing "binwalk"
+  fi
+  printf '%s\n' "${C_YELLOW}└───────────────────────────────────────────────────────────────┘${C_RESET}"
+}
+
+print_missing_summary() {
+  if ((${#MISSING[@]} == 0)); then
+    return
+  fi
+
+  local uniq=()
+  local seen
+  for m in "${MISSING[@]}"; do
+    seen=0
+    for u in "${uniq[@]}"; do
+      [[ "$u" == "$m" ]] && {
+        seen=1
+        break
+      }
+    done
+    ((seen == 0)) && uniq+=("$m")
+  done
+
+  printf '%s\n' "${C_DIM}Note: some optional tools are not installed:${C_RESET}"
+  printf '%s\n' "  ${C_DIM}${uniq[*]}${C_RESET}"
+}
+
+# ---- main ------------------------------------------------------------------
+
+BRIEF=0
+FILE=""
+
+while (($# > 0)); do
+  case "$1" in
+  -b | --brief)
+    BRIEF=1
+    shift
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  --)
+    shift
+    break
+    ;;
+  -*)
+    printf '%sUnknown option: %s%s\n' "$C_RED" "$1" "$C_RESET" >&2
+    usage >&2
+    exit 1
+    ;;
+  *)
+    FILE=$1
+    shift
+    ;;
+  esac
+done
+
+if [[ -z "${FILE}" ]]; then
+  usage >&2
+  exit 1
+fi
+
+if [[ ! -e "$FILE" ]]; then
+  printf '%sfig:%s file not found: %s\n' "$C_RED" "$C_RESET" "$FILE" >&2
+  exit 1
+fi
+
+print_header "$FILE"
+print_hashes "$FILE"
+print_text_stats "$FILE"
+print_entropy_and_compression "$FILE"
+print_fs_info "$FILE"
+print_preview "$FILE"
+
+if ((BRIEF == 0)); then
+  print_hex_preview "$FILE"
+  print_extended "$FILE"
+fi
+
+print_missing_summary

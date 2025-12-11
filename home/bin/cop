@@ -61,6 +61,56 @@ show_horizon() {
 # --- Logging -----------------------------------------------------------------
 log() { printf "📋 %s%s%s\n" "$C_CORAL" "$*" "$C_RESET" >&2; }
 
+# --- Content Stats -----------------------------------------------------------
+format_size() {
+  local bytes=$1
+  if ((bytes >= 1048576)); then
+    printf "%.2f MB" "$(echo "scale=2; $bytes/1048576" | bc)"
+  elif ((bytes >= 1024)); then
+    printf "%.2f kB" "$(echo "scale=2; $bytes/1024" | bc)"
+  else
+    printf "%d B" "$bytes"
+  fi
+}
+
+content_stats() {
+  local data="$1"
+  local bytes chars words lines md5h sha256h compress_ratio ftype enc_info
+
+  bytes=${#data}
+  chars=$(printf "%s" "$data" | wc -m | tr -d ' ')
+  words=$(printf "%s" "$data" | wc -w | tr -d ' ')
+  lines=$(printf "%s" "$data" | wc -l | tr -d ' ')
+
+  # Hashes (first 6 chars)
+  md5h=$(printf "%s" "$data" | md5sum 2>/dev/null | cut -c1-6 || echo "------")
+  sha256h=$(printf "%s" "$data" | sha256sum 2>/dev/null | cut -c1-6 || echo "------")
+
+  # Compressibility (gzip ratio)
+  if command -v gzip &>/dev/null && ((bytes > 0)); then
+    local compressed
+    compressed=$(printf "%s" "$data" | gzip -c | wc -c | tr -d ' ')
+    compress_ratio=$(echo "scale=0; 100 - ($compressed * 100 / $bytes)" | bc 2>/dev/null || echo "0")
+  else
+    compress_ratio="?"
+  fi
+
+  # File type detection
+  ftype=$(printf "%s" "$data" | file -b - 2>/dev/null | cut -d, -f1 | head -c30 || echo "unknown")
+
+  # Encoding detection
+  enc_info=$(printf "%s" "$data" | file -b --mime-encoding - 2>/dev/null || echo "?")
+
+  # Single-line output with icons
+  printf "%s📊%s %s %s│%s %s%dC %dW %dL%s %s│%s %s#%s%s/%s%s%s %s│%s %s↘%s%%%s %s│%s %s%s%s %s[%s]%s" \
+    "$C_SKY" "$C_RESET" "$(format_size "$bytes")" \
+    "$C_DIM" "$C_RESET" "$C_PEACH" "$chars" "$words" "$lines" "$C_RESET" \
+    "$C_DIM" "$C_RESET" "$C_LAVENDER" "$md5h" "$C_RESET" "$C_LAVENDER" "$sha256h" "$C_RESET" \
+    "$C_DIM" "$C_RESET" "$C_MINT" "$compress_ratio" "$C_RESET" \
+    "$C_DIM" "$C_RESET" "$C_GOLD" "$ftype" "$C_RESET" \
+    "$C_DIM" "$enc_info" "$C_RESET"
+}
+
 # --- Help --------------------------------------------------------------------
 show_usage() {
   show_horizon >&2
@@ -390,8 +440,8 @@ do_paste() {
 
   if [[ -n "$output_file" ]]; then
     printf "%s" "$out" >"$output_file"
-    printf "📋 %s✓ Written%s to %s%s%s (%d bytes)\n" \
-      "$C_MINT" "$C_RESET" "$C_SKY" "$output_file" "$C_RESET" "${#out}" >&2
+    printf "📋 %s✓ Written%s → %s%s%s %s│%s %s\n" \
+      "$C_MINT" "$C_RESET" "$C_SKY" "$output_file" "$C_RESET" "$C_DIM" "$C_RESET" "$(content_stats "$out")" >&2
   else
     printf "%s" "$out"
   fi
@@ -413,7 +463,7 @@ do_copy() {
     fi
     # Base64-encoded ciphertext
     to_send=$(printf "%s" "$payload" | openssl enc -aes-256-cbc -salt -pbkdf2 -pass env:COP_SECRET -base64) || return 1
-    net_payload="$to_send"  # already base64(ciphertext)
+    net_payload="$to_send" # already base64(ciphertext)
   else
     to_send="$payload"
     # For non-encrypted network sync, store base64(plaintext)
@@ -426,7 +476,7 @@ do_copy() {
     confirm_send "$payload" "$enc" && kv_send "$net_payload"
   fi
 
-  printf "📋 %s✓ Copied%s %d bytes\n" "$C_MINT" "$C_RESET" "${#payload}"
+  printf "📋 %s✓ Copied%s %s│%s %s\n" "$C_MINT" "$C_RESET" "$C_DIM" "$C_RESET" "$(content_stats "$payload")" >&2
 }
 
 # --- Tests -------------------------------------------------------------------
