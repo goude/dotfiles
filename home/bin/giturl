@@ -1,57 +1,96 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-usage() {
-  cat <<'EOF'
-Usage:
-  giturl <path> [start_line [end_line]]
+# ----- tiny color helpers -----
+is_tty=0
+[[ -t 1 ]] && is_tty=1
 
-Examples:
-  giturl README.md
-  giturl src/main.py 10
-  giturl src/main.py 10 42
+c_reset=""; c_dim=""; c_bold=""; c_red=""; c_green=""; c_cyan=""; c_yellow=""
+if [[ "$is_tty" -eq 1 ]] && [[ "${NO_COLOR:-}" == "" ]] ; then
+  c_reset=$'\033[0m'
+  c_dim=$'\033[2m'
+  c_bold=$'\033[1m'
+  c_red=$'\033[31m'
+  c_green=$'\033[32m'
+  c_yellow=$'\033[33m'
+  c_cyan=$'\033[36m'
+fi
+
+err() { echo "${c_red}giturl:${c_reset} $*" >&2; exit 1; }
+
+usage() {
+  cat <<EOF
+${c_bold}giturl${c_reset} — print a GitHub URL to a file on the current branch
+
+${c_bold}Usage${c_reset}
+  ${c_cyan}giturl${c_reset} ${c_yellow}<path>${c_reset} ${c_dim}[start_line [end_line]]${c_reset}
+  ${c_cyan}giturl${c_reset} ${c_dim}--help${c_reset}
+
+${c_bold}Examples${c_reset}
+  ${c_cyan}giturl${c_reset} README.md
+  ${c_cyan}giturl${c_reset} tools.js
+  ${c_cyan}giturl${c_reset} src/main.py 10
+  ${c_cyan}giturl${c_reset} src/main.py 10 42
+
+${c_dim}Notes:${c_reset}
+  • Paths are interpreted relative to your current directory.
+  • Output uses the current branch name (falls back to commit hash if detached).
+  • Set NO_COLOR=1 to disable colors.
 EOF
 }
 
-err() { echo "giturl: $*" >&2; exit 1; }
+# ----- args -----
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  usage
+  exit 0
+fi
 
 [[ $# -ge 1 ]] || { usage; exit 2; }
 
-path="$1"
+input_path="$1"
 start_line="${2:-}"
 end_line="${3:-}"
 
-# Must be in a repo
+# ----- repo basics -----
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || err "not inside a git repo"
-
-# Normalize + validate path inside repo
 root="$(git rev-parse --show-toplevel)"
-abs="$root/$path"
-[[ -e "$abs" ]] || err "no such file: $path"
 
-# Relative path from repo root, without leading ./ and with URL-safe-ish slashes.
-rel="$(cd "$root" && python3 - <<'PY' "$path"
+# Resolve the user's path from *current directory*, then convert to repo-relative.
+# This makes "giturl tools.js" work from a subdir.
+abs_input="$(cd "$PWD" && pwd)/$input_path"
+# Normalize without requiring realpath (macOS has it, but keep it portable-ish).
+abs_norm="$(
+  python3 - <<'PY' "$abs_input"
 import os, sys
-p = sys.argv[1]
-p = os.path.normpath(p)
-if os.path.isabs(p):
-    # turn absolute into relative to repo root if possible
-    root = os.environ.get("GITURL_ROOT")
-    if root:
-        p = os.path.relpath(p, root)
-print(p.lstrip("./"))
+print(os.path.normpath(sys.argv[1]))
 PY
-)"
-# If python isn't around, fall back (less robust)
-if [[ -z "$rel" ]]; then
-  rel="${path#./}"
-fi
+)" || abs_norm="$abs_input"
 
-# Remote (prefer origin)
+[[ -e "$abs_norm" ]] || err "no such file: $input_path"
+
+rel="$(
+  python3 - <<'PY' "$abs_norm" "$root"
+import os, sys
+p = os.path.abspath(sys.argv[1])
+root = os.path.abspath(sys.argv[2])
+try:
+    rel = os.path.relpath(p, root)
+except ValueError:
+    rel = p
+# Guard against paths outside repo
+if rel.startswith(".."+os.sep) or rel == "..":
+    print("", end="")
+else:
+    print(rel.replace(os.sep, "/"), end="")
+PY
+)" || rel=""
+
+[[ -n "$rel" ]] || err "path is outside repo: $input_path"
+
+# ----- remote parsing (GitHub only, as requested) -----
 remote_url="$(git remote get-url origin 2>/dev/null || true)"
 [[ -n "$remote_url" ]] || err "no 'origin' remote found"
 
-# Convert remote to https://github.com/OWNER/REPO
 case "$remote_url" in
   git@github.com:*.git) base="https://github.com/${remote_url#git@github.com:}"; base="${base%.git}" ;;
   git@github.com:*)     base="https://github.com/${remote_url#git@github.com:}" ;;
@@ -60,8 +99,13 @@ case "$remote_url" in
   *) err "remote 'origin' is not a GitHub URL: $remote_url" ;;
 esac
 
-# Use the exact commit hash so the link always matches what you're on locally.
-ref="$(git rev-parse HEAD)"
+# ----- choose ref: branch name if possible, else commit hash -----
+branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+if [[ -n "$branch" ]]; then
+  ref="$branch"
+else
+  ref="$(git rev-parse HEAD)"
+fi
 
 url="$base/blob/$ref/$rel"
 
