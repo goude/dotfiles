@@ -20,10 +20,11 @@ err() { echo "${c_red}giturl:${c_reset} $*" >&2; exit 1; }
 
 usage() {
   cat <<EOF
-${c_bold}giturl${c_reset} — print a GitHub URL to a file on the current branch
+${c_bold}giturl${c_reset} — print a GitHub URL to a file on the current branch (or commit sha)
 
 ${c_bold}Usage${c_reset}
   ${c_cyan}giturl${c_reset} ${c_yellow}<path>${c_reset} ${c_dim}[start_line [end_line]]${c_reset}
+  ${c_cyan}giturl${c_reset} ${c_dim}--sha${c_reset} ${c_yellow}<path>${c_reset} ${c_dim}[start_line [end_line]]${c_reset}
   ${c_cyan}giturl${c_reset} ${c_dim}--help${c_reset}
 
 ${c_bold}Examples${c_reset}
@@ -31,18 +32,29 @@ ${c_bold}Examples${c_reset}
   ${c_cyan}giturl${c_reset} tools.js
   ${c_cyan}giturl${c_reset} src/main.py 10
   ${c_cyan}giturl${c_reset} src/main.py 10 42
+  ${c_cyan}giturl${c_reset} ${c_dim}--sha${c_reset} tools.js
+  ${c_cyan}giturl${c_reset} ${c_dim}--sha${c_reset} src/main.py 10 42
 
 ${c_dim}Notes:${c_reset}
   • Paths are interpreted relative to your current directory.
-  • Output uses the current branch name (falls back to commit hash if detached).
+  • Default output uses the current branch name (even if it's main).
+  • With --sha, output uses the commit SHA of HEAD (even on a branch).
+  • If detached, both modes use the commit SHA.
   • Set NO_COLOR=1 to disable colors.
 EOF
 }
 
 # ----- args -----
+use_sha=0
+
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   usage
   exit 0
+fi
+
+if [[ "${1:-}" == "--sha" ]]; then
+  use_sha=1
+  shift
 fi
 
 [[ $# -ge 1 ]] || { usage; exit 2; }
@@ -56,9 +68,7 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || err "not inside a git rep
 root="$(git rev-parse --show-toplevel)"
 
 # Resolve the user's path from *current directory*, then convert to repo-relative.
-# This makes "giturl tools.js" work from a subdir.
 abs_input="$(cd "$PWD" && pwd)/$input_path"
-# Normalize without requiring realpath (macOS has it, but keep it portable-ish).
 abs_norm="$(
   python3 - <<'PY' "$abs_input"
 import os, sys
@@ -92,19 +102,27 @@ remote_url="$(git remote get-url origin 2>/dev/null || true)"
 [[ -n "$remote_url" ]] || err "no 'origin' remote found"
 
 case "$remote_url" in
-  git@github.com:*.git) base="https://github.com/${remote_url#git@github.com:}"; base="${base%.git}" ;;
-  git@github.com:*)     base="https://github.com/${remote_url#git@github.com:}" ;;
-  https://github.com/*.git) base="${remote_url%.git}" ;;
-  https://github.com/*)     base="$remote_url" ;;
+  git@github.com:*.git)       base="https://github.com/${remote_url#git@github.com:}"; base="${base%.git}" ;;
+  git@github.com:*)           base="https://github.com/${remote_url#git@github.com:}" ;;
+  https://github.com/*.git)   base="${remote_url%.git}" ;;
+  https://github.com/*)       base="$remote_url" ;;
   *) err "remote 'origin' is not a GitHub URL: $remote_url" ;;
 esac
 
-# ----- choose ref: branch name if possible, else commit hash -----
+# ----- choose ref -----
+# Default: branch name if possible. With --sha: commit SHA (even on a branch).
 branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
-if [[ -n "$branch" ]]; then
-  ref="$branch"
+sha="$(git rev-parse HEAD 2>/dev/null || true)"
+[[ -n "$sha" ]] || err "could not resolve HEAD"
+
+if [[ "$use_sha" -eq 1 ]]; then
+  ref="$sha"
 else
-  ref="$(git rev-parse HEAD)"
+  if [[ -n "$branch" ]]; then
+    ref="$branch"
+  else
+    ref="$sha"
+  fi
 fi
 
 url="$base/blob/$ref/$rel"
