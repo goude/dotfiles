@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  giturl <path> [start_line [end_line]]
+
+Examples:
+  giturl README.md
+  giturl src/main.py 10
+  giturl src/main.py 10 42
+EOF
+}
+
+err() { echo "giturl: $*" >&2; exit 1; }
+
+[[ $# -ge 1 ]] || { usage; exit 2; }
+
+path="$1"
+start_line="${2:-}"
+end_line="${3:-}"
+
+# Must be in a repo
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || err "not inside a git repo"
+
+# Normalize + validate path inside repo
+root="$(git rev-parse --show-toplevel)"
+abs="$root/$path"
+[[ -e "$abs" ]] || err "no such file: $path"
+
+# Relative path from repo root, without leading ./ and with URL-safe-ish slashes.
+rel="$(cd "$root" && python3 - <<'PY' "$path"
+import os, sys
+p = sys.argv[1]
+p = os.path.normpath(p)
+if os.path.isabs(p):
+    # turn absolute into relative to repo root if possible
+    root = os.environ.get("GITURL_ROOT")
+    if root:
+        p = os.path.relpath(p, root)
+print(p.lstrip("./"))
+PY
+)"
+# If python isn't around, fall back (less robust)
+if [[ -z "$rel" ]]; then
+  rel="${path#./}"
+fi
+
+# Remote (prefer origin)
+remote_url="$(git remote get-url origin 2>/dev/null || true)"
+[[ -n "$remote_url" ]] || err "no 'origin' remote found"
+
+# Convert remote to https://github.com/OWNER/REPO
+case "$remote_url" in
+  git@github.com:*.git) base="https://github.com/${remote_url#git@github.com:}"; base="${base%.git}" ;;
+  git@github.com:*)     base="https://github.com/${remote_url#git@github.com:}" ;;
+  https://github.com/*.git) base="${remote_url%.git}" ;;
+  https://github.com/*)     base="$remote_url" ;;
+  *) err "remote 'origin' is not a GitHub URL: $remote_url" ;;
+esac
+
+# Use the exact commit hash so the link always matches what you're on locally.
+ref="$(git rev-parse HEAD)"
+
+url="$base/blob/$ref/$rel"
+
+# Optional line fragment
+if [[ -n "$start_line" ]]; then
+  [[ "$start_line" =~ ^[0-9]+$ ]] || err "start_line must be an integer"
+  if [[ -n "$end_line" ]]; then
+    [[ "$end_line" =~ ^[0-9]+$ ]] || err "end_line must be an integer"
+    url="${url}#L${start_line}-L${end_line}"
+  else
+    url="${url}#L${start_line}"
+  fi
+fi
+
+echo "$url"
