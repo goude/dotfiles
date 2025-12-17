@@ -29,10 +29,6 @@ alias n='nvim'
 alias k='kubectl'
 alias mgs='mgitstatus ~/repos ~/.homesick/repos'
 
-# grepping aliases
-alias esi='env | grep -i $1'
-alias hsi='history | grep -i $1'
-
 # tmux aliases
 alias ta='tmux attach || tmux new'
 alias clp='tmux split-window && exit'
@@ -41,7 +37,3 @@ alias tlk='tmux kill-session -a && tmux kill-server'
 # misc aliases
 alias serve-directory='python3 -m http.server'
 alias sud='save "minor edit/housekeeping activity"'
-alias rgi='rg -Li'
-#alias pbcopy='xclip -in'
-#alias pbpaste='xclip -out'
-#alias cat='bat'
