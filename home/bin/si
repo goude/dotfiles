@@ -23,34 +23,29 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 usage() {
   cat <<EOF
-${C_BOLD}${APP}${C_RESET}  ${C_DIM}case-insensitive search hub${C_RESET}
+${C_BOLD}${APP}${C_RESET}  ${C_DIM}fzf launcher for quick jumps / recall${C_RESET}
 
-  ${C_CYN}󰍉${C_RESET} h  history   (fish / bash / zsh)
-  ${C_CYN}󰆧${C_RESET} e  env       (NAME=VALUE)
-  ${C_CYN}󰱽${C_RESET} r  ripgrep   (only if query is non-empty)
-  ${C_CYN}󰊢${C_RESET} g  git files (only inside git repo)
+Modes
+  ${C_CYN}󰍉${C_RESET} Query mode:  ${C_BOLD}${APP}${C_RESET} 'string/regex'
+      Loads: history + env
+      Preview: none
 
-Usage
-  ${APP}
-  ${APP} 'query or regex'
-  ${APP} --help
+  ${C_CYN}󰊢${C_RESET} Browse mode: ${C_BOLD}${APP}${C_RESET}
+      Loads: git files + z --list (2nd column)
+      Preview: bat for files only
 
-Enter prints a useful payload:
-  h → command
-  e → NAME=VALUE
-  g → file path
-  r → file:line
+Enter copies the selected payload via: ${C_BOLD}cop${C_RESET}
 
-Deps: fzf (required). Optional: rg, git, bat.
+Deps: fzf (required). Optional: git, z, bat, cop.
 EOF
 }
 
 # ---------- args ----------
 case "${1-}" in
---help | -h)
-  usage
-  exit 0
-  ;;
+  --help|-h)
+    usage
+    exit 0
+    ;;
 esac
 
 QUERY="${1-}"
@@ -61,114 +56,140 @@ have fzf || die "fzf is required"
 hist_source() {
   local fish_hist="${XDG_DATA_HOME:-$HOME/.local/share}/fish/fish_history"
   local bash_hist="${HISTFILE:-$HOME/.bash_history}"
-  local zsh_hist="${HISTFILE:-$HOME/.zsh_history}"
+  local zsh_hist="${ZDOTDIR:-$HOME}/.zsh_history"
 
   if [[ -f "$fish_hist" ]]; then
-    sed -n 's/^[[:space:]]*cmd:[[:space:]]*//p' "$fish_hist" |
-      sed 's/^"\(.*\)"$/\1/'
-  elif [[ -f "$zsh_hist" ]]; then
-    sed 's/^: [0-9]\+:[0-9]\+;//' "$zsh_hist"
-  elif [[ -f "$bash_hist" ]]; then
-    cat "$bash_hist"
+    sed -n 's/^[[:space:]]*cmd:[[:space:]]*//p' "$fish_hist" 2>/dev/null \
+      | sed 's/^"\(.*\)"$/\1/' 2>/dev/null || true
+  fi
+
+  if [[ -f "$zsh_hist" ]]; then
+    sed 's/^: [0-9]\+:[0-9]\+;//' "$zsh_hist" 2>/dev/null || true
+  fi
+
+  if [[ -f "$bash_hist" ]]; then
+    cat "$bash_hist" 2>/dev/null || true
   fi
 }
 
 env_source() {
-  env | LC_ALL=C sort
+  env 2>/dev/null | LC_ALL=C sort || true
 }
 
 git_files_source() {
   if have git && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    git ls-files
+    git ls-files 2>/dev/null || true
   fi
 }
 
-rg_source() {
-  local q="$1"
-  [[ -n "$q" ]] || return 0
-  have rg || return 0
-  rg -n --hidden --glob '!.git/*' -i -- "$q" . 2>/dev/null || true
+z_list_source() {
+  have z || return 0
+  # We want the 2nd column from `z --list`.
+  # Different z implementations vary; this assumes: score <ws> path ...
+  z --list 2>/dev/null | awk 'NF >= 2 { print $2 }' || true
 }
 
-# ---------- build list ----------
-# TYPE<TAB>DISPLAY<TAB>PAYLOAD
-mklist() {
-  hist_source | awk '
-    NF {
-      printf "h\t󰍉  %s\t%s\n", $0, $0
-    }'
-
-  env_source | awk -F= '
-    NF {
-      printf "e\t󰆧  %s=%s\t%s\n", $1, substr($0, length($1)+2), $0
-    }'
-
-  git_files_source | awk '
-    NF {
-      printf "g\t󰊢  %s\t%s\n", $0, $0
-    }'
-
-  rg_source "$QUERY" | awk -F: '
-    NF >= 3 {
-      line = $2
-      file = $1
-      rest = $0
-      sub(/^[^:]*:[^:]*:/, "", rest)
-      printf "r\t󰱽  %s:%s  %s\t%s:%s\n", file, line, rest, file, line
-    }'
+# ---------- list builders ----------
+# Row format: TYPE<TAB>DISPLAY<TAB>PAYLOAD
+mk_query_list() {
+  hist_source | awk 'NF { printf "h\t󰍉  %s\t%s\n", $0, $0 }' || true
+  env_source | awk -F= 'NF { printf "e\t󰆧  %s=%s\t%s\n", $1, substr($0, length($1)+2), $0 }' || true
 }
 
-# ---------- preview script ----------
-read -r -d '' PREVIEW_SCRIPT <<'EOF'
-IFS=$'\t' read -r typ _ payload <<< "$1"
+mk_browse_list() {
+  git_files_source | awk 'NF { printf "g\t󰊢  %s\t%s\n", $0, $0 }' || true
+  z_list_source | awk 'NF { printf "z\t󰈔  %s\t%s\n", $0, $0 }' || true
+}
 
-case "$typ" in
-  g)
-    if command -v bat >/dev/null 2>&1; then
-      bat --style=numbers --color=always --line-range=:300 -- "$payload" 2>/dev/null
-    else
-      sed -n '1,200p' "$payload" 2>/dev/null
-    fi
-    ;;
-  r)
-    file="${payload%:*}"
-    ln="${payload##*:}"
-    start=$((ln > 20 ? ln - 20 : 1))
-    end=$((ln + 40))
-    if command -v bat >/dev/null 2>&1; then
-      bat --style=numbers --color=always \
-        --highlight-line="$ln" \
-        --line-range="$start:$end" \
-        -- "$file" 2>/dev/null
-    else
-      sed -n "${start},${end}p" "$file" 2>/dev/null
-    fi
-    ;;
-  h)
-    printf "󰍉  %s\n" "$payload"
-    ;;
-  e)
-    printf "󰆧  %s\n" "$payload"
-    ;;
-esac
-EOF
+# ---------- preview (browse mode only) ----------
+# Only preview for git files (type g), using bat if available.
+preview_cmd=$'bash -lc '\''
+set +u
+line="$1"
+[ -n "$line" ] || exit 0
+
+IFS=$'\''\t'\'' read -r typ _ payload <<< "$line" || exit 0
+[ "${typ:-}" = "g" ] || exit 0
+[ -n "${payload:-}" ] || exit 0
+
+if command -v bat >/dev/null 2>&1; then
+  bat --style=numbers --color=always --line-range=:300 -- "$payload" 2>/dev/null || true
+else
+  sed -n '\''1,200p'\'' "$payload" 2>/dev/null || true
+fi
+'\'' -- "{}"'
 
 # ---------- run fzf ----------
-selected="$(
-  mklist | fzf \
-    --ansi \
-    --delimiter=$'\t' \
-    --with-nth=2 \
-    --query="$QUERY" \
-    --prompt="󰱼  " \
-    --header="${C_BOLD}si${C_RESET}  ${C_DIM}h/e/g/r • Enter prints payload${C_RESET}" \
-    --preview="bash -lc \"$PREVIEW_SCRIPT\" -- {}" \
-    --preview-window='right,60%,border-left,wrap' \
-    --bind 'ctrl-/:toggle-preview' \
-    --height=90% \
-    --border
-)" || exit 0
+run_fzf() {
+  local mode="$1" list_fn="$2" query="$3" use_preview="$4"
+  local header prompt selected
 
-# ---------- output ----------
-IFS=$'\t' read -r typ _ payload <<<"$selected"
-printf "%s\n" "$payload"
+  case "$mode" in
+    query)
+      header="${C_BOLD}si${C_RESET}  ${C_DIM}history + env${C_RESET}"
+      prompt="󰱼  "
+      ;;
+    browse)
+      header="${C_BOLD}si${C_RESET}  ${C_DIM}git files + z --list${C_RESET}"
+      prompt="󰊢  "
+      ;;
+    *)
+      die "internal: unknown mode '$mode'"
+      ;;
+  esac
+
+  if [[ -z "$($list_fn | head -n 1 || true)" ]]; then
+    die "No candidates found for mode: $mode"
+  fi
+
+  if [[ "$use_preview" == "yes" ]]; then
+    selected="$(
+      $list_fn | fzf \
+        --ansi \
+        --delimiter=$'\t' \
+        --with-nth=2 \
+        --query="$query" \
+        --prompt="$prompt" \
+        --header="$header" \
+        --preview="$preview_cmd" \
+        --preview-window='right,60%,border-left,wrap' \
+        --bind 'ctrl-/:toggle-preview' \
+        --height=90% \
+        --border
+    )" || return 1
+  else
+    selected="$(
+      $list_fn | fzf \
+        --ansi \
+        --delimiter=$'\t' \
+        --with-nth=2 \
+        --query="$query" \
+        --prompt="$prompt" \
+        --header="$header" \
+        --height=90% \
+        --border
+    )" || return 1
+  fi
+
+  printf "%s\n" "$selected"
+}
+
+# ---------- choose mode ----------
+selected=""
+if [[ -n "$QUERY" ]]; then
+  selected="$(run_fzf "query" mk_query_list "$QUERY" "no" || true)"
+else
+  selected="$(run_fzf "browse" mk_browse_list "" "yes" || true)"
+fi
+
+[[ -n "$selected" ]] || exit 0
+
+# ---------- on-enter: copy via cop ----------
+IFS=$'\t' read -r _ _ payload <<<"$selected"
+
+if have cop; then
+  printf "%s" "$payload" | cop >/dev/null 2>&1 || true
+else
+  # fallback: still print to stdout (so it's usable in pipes)
+  printf "%s\n" "$payload"
+fi
