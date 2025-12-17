@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP="si"
+
+# ---------- styling ----------
+if [[ -t 1 ]]; then
+  C_RESET=$'\033[0m'
+  C_DIM=$'\033[2m'
+  C_BOLD=$'\033[1m'
+  C_RED=$'\033[31m'
+  C_CYN=$'\033[36m'
+else
+  C_RESET="" C_DIM="" C_BOLD="" C_RED="" C_CYN=""
+fi
+
+die() {
+  printf "%s✖ %s%s\n" "${C_RED}" "$*" "${C_RESET}" >&2
+  exit 1
+}
+
+have() { command -v "$1" >/dev/null 2>&1; }
+
+usage() {
+  cat <<EOF
+${C_BOLD}${APP}${C_RESET}  ${C_DIM}case-insensitive search hub${C_RESET}
+
+  ${C_CYN}󰍉${C_RESET} h  history   (fish / bash / zsh)
+  ${C_CYN}󰆧${C_RESET} e  env       (NAME=VALUE)
+  ${C_CYN}󰱽${C_RESET} r  ripgrep   (only if query is non-empty)
+  ${C_CYN}󰊢${C_RESET} g  git files (only inside git repo)
+
+Usage
+  ${APP}
+  ${APP} 'query or regex'
+  ${APP} --help
+
+Enter prints a useful payload:
+  h → command
+  e → NAME=VALUE
+  g → file path
+  r → file:line
+
+Deps: fzf (required). Optional: rg, git, bat.
+EOF
+}
+
+# ---------- args ----------
+case "${1-}" in
+--help | -h)
+  usage
+  exit 0
+  ;;
+esac
+
+QUERY="${1-}"
+
+have fzf || die "fzf is required"
+
+# ---------- sources ----------
+hist_source() {
+  local fish_hist="${XDG_DATA_HOME:-$HOME/.local/share}/fish/fish_history"
+  local bash_hist="${HISTFILE:-$HOME/.bash_history}"
+  local zsh_hist="${HISTFILE:-$HOME/.zsh_history}"
+
+  if [[ -f "$fish_hist" ]]; then
+    sed -n 's/^[[:space:]]*cmd:[[:space:]]*//p' "$fish_hist" |
+      sed 's/^"\(.*\)"$/\1/'
+  elif [[ -f "$zsh_hist" ]]; then
+    sed 's/^: [0-9]\+:[0-9]\+;//' "$zsh_hist"
+  elif [[ -f "$bash_hist" ]]; then
+    cat "$bash_hist"
+  fi
+}
+
+env_source() {
+  env | LC_ALL=C sort
+}
+
+git_files_source() {
+  if have git && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git ls-files
+  fi
+}
+
+rg_source() {
+  local q="$1"
+  [[ -n "$q" ]] || return 0
+  have rg || return 0
+  rg -n --hidden --glob '!.git/*' -i -- "$q" . 2>/dev/null || true
+}
+
+# ---------- build list ----------
+# TYPE<TAB>DISPLAY<TAB>PAYLOAD
+mklist() {
+  hist_source | awk '
+    NF {
+      printf "h\t󰍉  %s\t%s\n", $0, $0
+    }'
+
+  env_source | awk -F= '
+    NF {
+      printf "e\t󰆧  %s=%s\t%s\n", $1, substr($0, length($1)+2), $0
+    }'
+
+  git_files_source | awk '
+    NF {
+      printf "g\t󰊢  %s\t%s\n", $0, $0
+    }'
+
+  rg_source "$QUERY" | awk -F: '
+    NF >= 3 {
+      line = $2
+      file = $1
+      rest = $0
+      sub(/^[^:]*:[^:]*:/, "", rest)
+      printf "r\t󰱽  %s:%s  %s\t%s:%s\n", file, line, rest, file, line
+    }'
+}
+
+# ---------- preview script ----------
+read -r -d '' PREVIEW_SCRIPT <<'EOF'
+IFS=$'\t' read -r typ _ payload <<< "$1"
+
+case "$typ" in
+  g)
+    if command -v bat >/dev/null 2>&1; then
+      bat --style=numbers --color=always --line-range=:300 -- "$payload" 2>/dev/null
+    else
+      sed -n '1,200p' "$payload" 2>/dev/null
+    fi
+    ;;
+  r)
+    file="${payload%:*}"
+    ln="${payload##*:}"
+    start=$((ln > 20 ? ln - 20 : 1))
+    end=$((ln + 40))
+    if command -v bat >/dev/null 2>&1; then
+      bat --style=numbers --color=always \
+        --highlight-line="$ln" \
+        --line-range="$start:$end" \
+        -- "$file" 2>/dev/null
+    else
+      sed -n "${start},${end}p" "$file" 2>/dev/null
+    fi
+    ;;
+  h)
+    printf "󰍉  %s\n" "$payload"
+    ;;
+  e)
+    printf "󰆧  %s\n" "$payload"
+    ;;
+esac
+EOF
+
+# ---------- run fzf ----------
+selected="$(
+  mklist | fzf \
+    --ansi \
+    --delimiter=$'\t' \
+    --with-nth=2 \
+    --query="$QUERY" \
+    --prompt="󰱼  " \
+    --header="${C_BOLD}si${C_RESET}  ${C_DIM}h/e/g/r • Enter prints payload${C_RESET}" \
+    --preview="bash -lc \"$PREVIEW_SCRIPT\" -- {}" \
+    --preview-window='right,60%,border-left,wrap' \
+    --bind 'ctrl-/:toggle-preview' \
+    --height=90% \
+    --border
+)" || exit 0
+
+# ---------- output ----------
+IFS=$'\t' read -r typ _ payload <<<"$selected"
+printf "%s\n" "$payload"
