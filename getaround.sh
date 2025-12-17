@@ -52,34 +52,6 @@ fi
 # terminal flow control
 stty -ixon 2>/dev/null || true
 
-# pbcopy/pbpaste cross-platform
-if ! command -v pbcopy >/dev/null 2>&1; then
-  case "$OSTYPE" in
-    darwin*) : ;; # native on macOS
-    linux*)
-      # detect WSL
-      if grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null || \
-         grep -qiE 'microsoft|wsl' /proc/sys/kernel/osrelease 2>/dev/null; then
-        pbcopy()  { clip.exe; }
-        pbpaste() { powershell.exe -NoLogo -NoProfile -Command Get-Clipboard | tr -d '\r'; }
-      elif command -v xclip >/dev/null 2>&1; then
-        pbcopy()  { xclip -selection clipboard; }
-        pbpaste() { xclip -selection clipboard -o; }
-      elif command -v xsel >/dev/null 2>&1; then
-        pbcopy()  { xsel --clipboard --input; }
-        pbpaste() { xsel --clipboard --output; }
-      else
-        pbcopy()  { _ga_warn "pbcopy unavailable: install xclip or xsel (Linux)"; return 127; }
-        pbpaste() { _ga_warn "pbpaste unavailable: install xclip or xsel (Linux)"; return 127; }
-      fi
-      ;;
-    *)
-      pbcopy()  { _ga_warn "pbcopy unsupported on this platform"; return 127; }
-      pbpaste() { _ga_warn "pbpaste unsupported on this platform"; return 127; }
-      ;;
-  esac
-fi
-
 # functions
 ga-welcome() { printf 'Welcome to getaround (%s). EDITOR=%s\n' "$GETAROUND_VERSION" "$EDITOR"; }
 getaround()  { ga-welcome; }
