@@ -3,319 +3,143 @@ set -euo pipefail
 
 APP="si"
 
-# ---------- styling ----------
-if [[ -t 1 ]]; then
-  C_RESET=$'\033[0m'
-  C_DIM=$'\033[2m'
-  C_BOLD=$'\033[1m'
-  C_RED=$'\033[31m'
-  C_CYN=$'\033[36m'
-else
-  C_RESET="" C_DIM="" C_BOLD="" C_RED="" C_CYN=""
-fi
-
-die() {
-  printf "%s✖ %s%s\n" "${C_RED}" "$*" "${C_RESET}" >&2
-  exit 1
-}
-
 have() { command -v "$1" >/dev/null 2>&1; }
 
-usage() {
-  cat <<EOF
-${C_BOLD}${APP}${C_RESET}  ${C_DIM}fzf multi-mode search/jump tool${C_RESET}
-
-Usage
-  ${APP}            open fzf
-  ${APP} 'query'    open fzf with query pre-filled
-  ${APP} --help
-
-Inside fzf
-  Ctrl-M   rotate mode: git → fd → history → env → rg
-  Ctrl-C   exit (no action)
-  Enter    act by mode:
-           git/fd   cd to file dir and open in \$EDITOR
-           history  pipe selection to cop
-           env      pipe selection to cop
-           rg       open match location in \$EDITOR
-
-Preview by mode
-  git/fd   file preview via bat/batcat/cat
-  history  shows command
-  env      shows value
-  rg       colored context for current query
-
-Deps: fzf (required). Optional: git, fd, rg, bat/batcat, cop.
-EOF
-}
-
-# ---------- self path ----------
-SELF="$0"
-if have realpath; then
-  SELF="$(realpath "$SELF")"
-elif have python3; then
-  SELF="$(python3 - <<PY
-import os,sys
-print(os.path.realpath(sys.argv[1]))
-PY
-"$SELF")"
-fi
-
-# ---------- mode state ----------
-modes=(git fd history env rg)
-
-state_dir="${XDG_STATE_HOME:-$HOME/.local/state}"
-state_file="${state_dir}/si.mode"
-mkdir -p "$state_dir"
-
-mode_get() {
-  [[ -f "$state_file" ]] && cat "$state_file" 2>/dev/null || true
-}
-
-mode_set() {
-  printf "%s\n" "$1" >"$state_file"
-}
-
-mode_default() {
-  local m
-  m="$(mode_get)"
-  case "$m" in
-    git|fd|history|env|rg) printf "%s\n" "$m" ;;
-    *) printf "%s\n" "git" ;;
-  esac
-}
-
-mode_rotate() {
-  local cur next i
-  cur="$(mode_default)"
-
-  next="git"
-  for i in "${!modes[@]}"; do
-    if [[ "${modes[$i]}" == "$cur" ]]; then
-      next="${modes[$(((i + 1) % ${#modes[@]}))]}"
-      break
-    fi
-  done
-
-  mode_set "$next"
-}
-
-# ---------- source helpers ----------
-hist_source() {
-  local fish_hist="${XDG_DATA_HOME:-$HOME/.local/share}/fish/fish_history"
-  local bash_hist="${HISTFILE:-$HOME/.bash_history}"
-  local zsh_hist="${ZDOTDIR:-$HOME}/.zsh_history"
-
-  if [[ -f "$fish_hist" ]]; then
-    sed -n 's/^[[:space:]]*cmd:[[:space:]]*//p' "$fish_hist" 2>/dev/null \
-      | sed 's/^"\(.*\)"$/\1/' 2>/dev/null || true
-  fi
-
-  if [[ -f "$zsh_hist" ]]; then
-    sed 's/^: [0-9]\+:[0-9]\+;//' "$zsh_hist" 2>/dev/null || true
-  fi
-
-  if [[ -f "$bash_hist" ]]; then
-    cat "$bash_hist" 2>/dev/null || true
-  fi
-}
-
-env_source() {
-  env 2>/dev/null | LC_ALL=C sort || true
-}
-
-git_files_source() {
-  if have git && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    git ls-files 2>/dev/null || true
-  fi
-}
-
-fd_files_source() {
-  if have fd; then
-    fd --type f --hidden --follow --exclude .git 2>/dev/null || true
-  else
-    find . -type f -not -path '*/.git/*' 2>/dev/null | sed 's|^\./||' || true
-  fi
-}
-
-rg_source() {
-  local q="$1"
-  [[ -n "$q" ]] || return 0
-  have rg || return 0
-  rg -n --column --hidden --glob '!.git/*' --color=never -- "$q" . 2>/dev/null || true
-}
-
-# ---------- list output (single column payload) ----------
-list_for_mode() {
-  local mode="$1" q="${2-}"
-  case "$mode" in
-    git) git_files_source ;;
-    fd) fd_files_source ;;
-    history) hist_source ;;
-    env) env_source ;;
-    rg) rg_source "$q" ;;
-    *) die "internal: unknown mode '$mode'" ;;
-  esac
-}
-
-# ---------- preview helpers ----------
+# ---------- helpers ----------
 best_cat() {
   if have bat; then
-    printf "%s\n" "bat"
+    echo bat
   elif have batcat; then
-    printf "%s\n" "batcat"
+    echo batcat
   else
-    printf "%s\n" "cat"
+    echo cat
   fi
 }
 
-preview_for_mode() {
-  local mode="$1" q="$2" sel="$3"
-
-  [[ -n "$mode" ]] || exit 0
-
-  case "$mode" in
-    git|fd)
-      [[ -n "$sel" ]] || exit 0
-      [[ -f "$sel" ]] || { printf "%s\n" "$sel"; exit 0; }
-      case "$(best_cat)" in
-        bat) bat --style=numbers --color=always --line-range=:300 -- "$sel" 2>/dev/null || true ;;
-        batcat) batcat --style=numbers --color=always --line-range=:300 -- "$sel" 2>/dev/null || true ;;
-        cat) sed -n '1,200p' "$sel" 2>/dev/null || true ;;
-      esac
-      ;;
-    history)
-      [[ -n "$sel" ]] || exit 0
-      printf "󰍉  %s\n" "$sel"
-      ;;
-    env)
-      [[ -n "$sel" ]] || exit 0
-      if [[ "$sel" == *"="* ]]; then
-        printf "󰆧  %s%s%s\n" "${C_BOLD}" "${sel%%=*}" "${C_RESET}"
-        printf "%s\n" "${sel#*=}"
-      else
-        printf "󰆧  %s\n" "$sel"
-      fi
-      ;;
-    rg)
-      [[ -n "$sel" ]] || exit 0
-      [[ -n "$q" ]] || exit 0
-      have rg || exit 0
-
-      local file line rest start end
-      file="${sel%%:*}"
-      rest="${sel#*:}"
-      line="${rest%%:*}"
-      case "$line" in ''|*[!0-9]*) line=1 ;; esac
-
-      rg --color=always -n --column --heading -C 3 -- "$q" "$file" 2>/dev/null || true
-
-      if [[ -f "$file" ]]; then
-        start=$((line > 20 ? line - 20 : 1))
-        end=$((line + 40))
-        case "$(best_cat)" in
-          bat) bat --style=numbers --color=always --highlight-line="$line" --line-range="$start:$end" -- "$file" 2>/dev/null || true ;;
-          batcat) batcat --style=numbers --color=always --highlight-line="$line" --line-range="$start:$end" -- "$file" 2>/dev/null || true ;;
-          cat) sed -n "${start},${end}p" "$file" 2>/dev/null || true ;;
-        esac
-      fi
-      ;;
-  esac
-}
-
-# ---------- actions ----------
 open_in_editor() {
   local path="$1" line="${2-}"
-  [[ -n "$path" ]] || return 0
-
   local editor="${EDITOR:-vim}"
-  local dir base
-  dir="$(cd "$(dirname "$path")" && pwd)"
-  base="$(basename "$path")"
-
-  cd "$dir"
-
+  cd "$(dirname "$path")"
   if [[ -n "${line:-}" ]]; then
-    "$editor" "+$line" "$base"
+    "$editor" "+$line" "$(basename "$path")"
   else
-    "$editor" "$base"
+    "$editor" "$(basename "$path")"
   fi
 }
 
 pipe_to_cop() {
-  local s="$1"
   if have cop; then
-    printf "%s" "$s" | cop
+    printf "%s" "$1" | cop
   else
-    printf "%s\n" "$s"
+    printf "%s\n" "$1"
   fi
 }
 
-# ---------- internal subcommands (used by fzf reload/preview) ----------
-case "${1-}" in
-  --help|-h)
-    usage
-    exit 0
+# ---------- sources ----------
+git_files() {
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return
+  git ls-files | awk '{ print "git\t" $0 }'
+}
+
+fd_files() {
+  if have fd; then
+    fd --type f --hidden --exclude .git | awk '{ print "fd\t" $0 }'
+  else
+    find . -type f -not -path '*/.git/*' | sed 's|^\./||' | awk '{ print "fd\t" $0 }'
+  fi
+}
+
+hist_items() {
+  local fish="${XDG_DATA_HOME:-$HOME/.local/share}/fish/fish_history"
+  if [[ -f "$fish" ]]; then
+    sed -n 's/^[[:space:]]*cmd:[[:space:]]*//p' "$fish" |
+      sed 's/^"\(.*\)"$/\1/' |
+      awk '{ print "history\t" $0 }'
+  fi
+}
+
+env_items() {
+  env | sort | awk '{ print "env\t" $0 }'
+}
+
+rg_items() {
+  [[ -n "$1" ]] || return
+  have rg || return
+  rg -n --column --color=never -- "$1" . | awk '{ print "rg\t" $0 }'
+}
+
+# ---------- preview ----------
+preview() {
+  local mode="$1" q="$2" sel="$3"
+  case "$mode" in
+  git | fd)
+    [[ -f "$sel" ]] || exit 0
+    case "$(best_cat)" in
+    bat) bat --color=always --line-range=:300 "$sel" ;;
+    batcat) batcat --color=always --line-range=:300 "$sel" ;;
+    cat) sed -n '1,200p' "$sel" ;;
+    esac
     ;;
-  --rotate)
-    mode_rotate
-    exit 0
+  history) printf "%s\n" "$sel" ;;
+  env) printf "%s\n" "${sel#*=}" ;;
+  rg)
+    local file line
+    file="${sel%%:*}"
+    line="${sel#*:}"
+    line="${line%%:*}"
+    rg --color=always -n -C 3 -- "$q" "$file" || true
     ;;
-  --mode)
-    mode_default
-    exit 0
-    ;;
-  --list)
-    shift
-    list_for_mode "${1-}" "${2-}"
-    exit 0
-    ;;
-  --preview)
-    shift
-    preview_for_mode "${1-}" "${2-}" "${3-}"
-    exit 0
-    ;;
-esac
+  esac
+}
+
+# ---------- mode rotation ----------
+modes=(git fd history env rg)
+
+rotate_mode() {
+  local cur="$1"
+  for i in "${!modes[@]}"; do
+    if [[ "${modes[$i]}" == "$cur" ]]; then
+      echo "${modes[$(((i + 1) % ${#modes[@]}))]}"
+      return
+    fi
+  done
+  echo git
+}
 
 # ---------- main ----------
-initial_query="${1-}"
-mode_set "$(mode_default)"
-
-header_static="${C_BOLD}${APP}${C_RESET}  ${C_DIM}Ctrl-M rotate: git → fd → history → env → rg   Ctrl-C exit${C_RESET}"
+QUERY="${1-}"
+MODE=git
 
 selected="$(
   fzf \
-    --ansi \
-    --query="$initial_query" \
+    --query="$QUERY" \
+    --delimiter=$'\t' \
+    --with-nth=2 \
     --prompt="󰱼  " \
-    --header="$header_static" \
-    --border \
-    --height=90% \
-    --preview="$SELF --preview \$($SELF --mode) {q} {}" \
-    --preview-window='right,60%,border-left,wrap' \
-    --bind "ctrl-c:abort" \
-    --bind "ctrl-m:execute-silent($SELF --rotate)+reload($SELF --list \$($SELF --mode) {q})" \
-    --bind "change:reload($SELF --list \$($SELF --mode) {q})" \
-    --bind "start:reload($SELF --list \$($SELF --mode) {q})"
+    --header="Ctrl-M rotate mode | Enter act | Ctrl-C exit" \
+    --preview="bash -lc 'preview \"{1}\" \"$QUERY\" \"{2}\"' preview" \
+    --preview-window='right,60%' \
+    --bind "start:reload(git_files)" \
+    --bind "ctrl-m:execute-silent(MODE=\$(rotate_mode \"$MODE\"))+reload(
+      case \"$MODE\" in
+        git) git_files ;;
+        fd) fd_files ;;
+        history) hist_items ;;
+        env) env_items ;;
+        rg) rg_items \"$QUERY\" ;;
+      esac
+    )"
 )" || exit 0
 
-mode_now="$("$SELF" --mode)"
+IFS=$'\t' read -r mode payload <<<"$selected"
 
-case "$mode_now" in
-  git|fd)
-    open_in_editor "$selected"
-    ;;
-  history|env)
-    pipe_to_cop "$selected"
-    ;;
-  rg)
-    file="${selected%%:*}"
-    rest="${selected#*:}"
-    line="${rest%%:*}"
-    case "$line" in ''|*[!0-9]*) line=1 ;; esac
-    open_in_editor "$file" "$line"
-    ;;
-  *)
-    die "unknown mode: $mode_now"
-    ;;
+case "$mode" in
+git | fd) open_in_editor "$payload" ;;
+history | env) pipe_to_cop "$payload" ;;
+rg)
+  file="${payload%%:*}"
+  line="${payload#*:}"
+  line="${line%%:*}"
+  open_in_editor "$file" "$line"
+  ;;
 esac
