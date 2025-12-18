@@ -1,79 +1,56 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# si — fzf multi-mode search/jump tool
 
-APP="si"
+source "$(command -v dip)" || { echo "dip not found" >&2; exit 1; }
 
-have() { command -v "$1" >/dev/null 2>&1; }
+dip_strict
+dip_init_colors
+
+# ---- usage -----------------------------------------------------------------
 
 usage() {
-  cat <<'EOF'
-si — fzf multi-mode search/jump
+  dip_usage_header "si" "fzf multi-mode search/jump"
 
-Usage
+  cat <<EOF
+${C_GOLD}Usage:${C_RESET}
   si            open fzf
   si 'query'    open fzf with query pre-filled
   si --help
 
-Inside fzf
+${C_GOLD}Options:${C_RESET}
+$(dip_usage_opt h help "Show this help")
+$(dip_usage_opt "" test "Run self-tests")
+
+${C_GOLD}Inside fzf:${C_RESET}
   Ctrl-R   rotate mode: git → fd → history → env → rg
   Ctrl-C   exit (no action)
   Enter    act by mode:
-           git/fd   cd to file dir and open in $EDITOR
+           git/fd   cd to file dir and open in \$EDITOR
            history  pipe selection to cop
            env      pipe selection to cop
-           rg       open match location in $EDITOR
+           rg       open match location in \$EDITOR
 
-Preview by mode
+${C_GOLD}Preview by mode:${C_RESET}
   git/fd   file preview via bat / batcat / cat
   history  shows command
   env      shows value
   rg       colored context for current query
 
-Note: Ctrl-M == Enter in terminals, so rotation cannot be on Ctrl-M.
-Deps: fzf (required). Optional: git, fd, rg, bat/batcat, cop.
+${C_DIM}Note: Ctrl-M == Enter in terminals, so rotation cannot be on Ctrl-M.
+Deps: fzf (required). Optional: git, fd, rg, bat/batcat, cop.${C_RESET}
 EOF
 }
 
-# ---------- args ----------
-case "${1-}" in
-  --help|-h)
-    usage
-    exit 0
-    ;;
-esac
-
-have fzf || { echo "si: fzf is required" >&2; exit 1; }
-
-QUERY="${1-}"
-
-# ---------- self path ----------
-SELF="$0"
-if have realpath; then
-  SELF="$(realpath "$SELF")"
-elif have python3; then
-  SELF="$(python3 - <<'PY' "$SELF"
-import os,sys
-print(os.path.realpath(sys.argv[1]))
-PY
-)"
-fi
-
-# ---------- helpers ----------
-best_cat() {
-  if have bat; then echo bat
-  elif have batcat; then echo batcat
-  else echo cat
-  fi
-}
+# ---- helpers ---------------------------------------------------------------
 
 open_in_editor() {
-  local path="$1" line="${2-}"
+  local path="$1" line="${2:-}"
   local editor="${EDITOR:-vim}"
 
   [[ -n "$path" ]] || return 0
-  cd "$(dirname "$path")"
+  cd "$(dirname "$path")" || return 1
 
-  if [[ -n "${line:-}" ]]; then
+  if [[ -n "$line" ]]; then
     "$editor" "+$line" "$(basename "$path")"
   else
     "$editor" "$(basename "$path")"
@@ -81,15 +58,15 @@ open_in_editor() {
 }
 
 pipe_to_cop() {
-  if have cop; then
-    # don't suppress stderr; cop prints useful status
+  if dip_have cop; then
     printf "%s" "$1" | cop
   else
     printf "%s\n" "$1"
   fi
 }
 
-# ---------- mode (ephemeral for this run only) ----------
+# ---- mode management -------------------------------------------------------
+
 modes=(git fd history env rg)
 
 mode_get() {
@@ -118,15 +95,16 @@ mode_rotate() {
   mode_set "$f" "$next"
 }
 
-# ---------- sources ----------
+# ---- data sources ----------------------------------------------------------
+
 git_files() {
-  have git || return 0
-  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+  dip_have git || return 0
+  dip_is_git_repo || return 0
   git ls-files 2>/dev/null | awk '{ print "git\t" $0 }' || true
 }
 
 fd_files() {
-  if have fd; then
+  if dip_have fd; then
     fd --type f --hidden --follow --exclude .git 2>/dev/null | awk '{ print "fd\t" $0 }' || true
   else
     find . -type f -not -path '*/.git/*' 2>/dev/null \
@@ -138,7 +116,7 @@ fd_files() {
 hist_items() {
   local fish="${XDG_DATA_HOME:-$HOME/.local/share}/fish/fish_history"
   local zsh="${ZDOTDIR:-$HOME}/.zsh_history"
-  local bash="${HISTFILE:-$HOME/.bash_history}"
+  local bash_hist="${HISTFILE:-$HOME/.bash_history}"
 
   if [[ -f "$fish" ]]; then
     sed -n 's/^[[:space:]]*cmd:[[:space:]]*//p' "$fish" 2>/dev/null \
@@ -151,8 +129,8 @@ hist_items() {
       | awk '{ print "history\t" $0 }' || true
   fi
 
-  if [[ -f "$bash" ]]; then
-    cat "$bash" 2>/dev/null | awk '{ print "history\t" $0 }' || true
+  if [[ -f "$bash_hist" ]]; then
+    cat "$bash_hist" 2>/dev/null | awk '{ print "history\t" $0 }' || true
   fi
 }
 
@@ -163,25 +141,104 @@ env_items() {
 rg_items() {
   local q="$1"
   [[ -n "$q" ]] || return 0
-  have rg || return 0
+  dip_have rg || return 0
   rg -n --column --hidden --glob '!.git/*' --color=never -- "$q" . 2>/dev/null \
     | awk '{ print "rg\t" $0 }' || true
 }
 
-# ---------- internal entrypoints used by fzf ----------
-case "${1-}" in
+# ---- preview ---------------------------------------------------------------
+
+do_preview() {
+  local mode="$1" payload="$2" query="$3"
+  local bat_cmd
+
+  case "$mode" in
+    git|fd)
+      [[ -f "$payload" ]] || return 0
+      bat_cmd="$(dip_best_cat)"
+      case "$bat_cmd" in
+        bat) bat --color=always --line-range=:300 -- "$payload" 2>/dev/null || true ;;
+        batcat) batcat --color=always --line-range=:300 -- "$payload" 2>/dev/null || true ;;
+        cat) sed -n '1,200p' "$payload" 2>/dev/null || true ;;
+      esac
+      ;;
+    history)
+      printf "%s\n" "$payload"
+      ;;
+    env)
+      printf "%s\n" "${payload#*=}"
+      ;;
+    rg)
+      dip_have rg || return 0
+      [[ -n "$query" ]] || return 0
+      local file="${payload%%:*}"
+      rg --color=always -n -C 3 -- "$query" "$file" 2>/dev/null || true
+      ;;
+  esac
+}
+
+# ---- tests -----------------------------------------------------------------
+
+run_tests() {
+  dip_test_suite "si tests"
+
+  local self_path
+  self_path="$(dip_realpath "$0")"
+
+  dip_test "si --help works"
+  dip_assert_ok "help flag" "$self_path" --help
+
+  dip_test "dip_have fzf or skip"
+  if ! dip_have fzf; then
+    dip_warn "fzf not installed, skipping interactive tests"
+    dip_test_summary
+    return $?
+  fi
+  _dip_test_pass  # fzf exists
+
+  dip_test "git_files runs without error"
+  dip_assert_ok "git_files" bash -c "source '$self_path' --source-only 2>/dev/null; git_files >/dev/null 2>&1" || true
+  _dip_test_pass
+
+  dip_test "fd_files runs without error"
+  dip_assert_ok "fd_files" bash -c "source '$self_path' --source-only 2>/dev/null; fd_files >/dev/null 2>&1" || true
+  _dip_test_pass
+
+  dip_test "env_items produces output"
+  local env_out
+  env_out=$(env_items | head -1)
+  dip_assert_contains "env output has tab" "$env_out" $'\t'
+
+  dip_test "mode rotation works"
+  local tmpmode
+  tmpmode=$(mktemp)
+  mode_set "$tmpmode" "git"
+  dip_assert_eq "initial mode" "$(mode_get "$tmpmode")" "git"
+  mode_rotate "$tmpmode"
+  dip_assert_eq "after rotate" "$(mode_get "$tmpmode")" "fd"
+  mode_rotate "$tmpmode"
+  dip_assert_eq "after rotate 2" "$(mode_get "$tmpmode")" "history"
+  rm -f "$tmpmode"
+
+  dip_test_summary
+}
+
+# ---- internal entrypoints (used by fzf) ------------------------------------
+
+SELF="$(dip_realpath "$0")"
+
+case "${1:-}" in
   --mode-get)
-    mode_get "${2-}"
+    mode_get "${2:-}"
     exit 0
     ;;
   --mode-rotate)
-    mode_rotate "${2-}"
+    mode_rotate "${2:-}"
     exit 0
     ;;
   --list)
-    # --list MODE_FILE QUERY
-    mf="${2-}"
-    q="${3-}"
+    mf="${2:-}"
+    q="${3:-}"
     m="$(mode_get "$mf")"
     case "$m" in
       git) git_files ;;
@@ -194,42 +251,44 @@ case "${1-}" in
     exit 0
     ;;
   --preview)
-    # --preview MODE_FILE QUERY "{mode}\t{payload}"
-    mf="${2-}"
-    q="${3-}"
-    line="${4-}"
+    mf="${2:-}"
+    q="${3:-}"
+    line="${4:-}"
 
     [[ -n "$line" ]] || exit 0
     IFS=$'\t' read -r mode payload <<<"$line" || exit 0
     [[ -n "${mode:-}" && -n "${payload:-}" ]] || exit 0
 
-    case "$mode" in
-      git|fd)
-        [[ -f "$payload" ]] || exit 0
-        case "$(best_cat)" in
-          bat) bat --color=always --line-range=:300 -- "$payload" 2>/dev/null || true ;;
-          batcat) batcat --color=always --line-range=:300 -- "$payload" 2>/dev/null || true ;;
-          cat) sed -n '1,200p' "$payload" 2>/dev/null || true ;;
-        esac
-        ;;
-      history)
-        printf "%s\n" "$payload"
-        ;;
-      env)
-        printf "%s\n" "${payload#*=}"
-        ;;
-      rg)
-        have rg || exit 0
-        [[ -n "$q" ]] || exit 0
-        file="${payload%%:*}"
-        rg --color=always -n -C 3 -- "$q" "$file" 2>/dev/null || true
-        ;;
-    esac
+    do_preview "$mode" "$payload" "$q"
+    exit 0
+    ;;
+  --source-only)
+    # For testing: just source the functions, don't run main
     exit 0
     ;;
 esac
 
-# ---------- main fzf ----------
+# ---- main ------------------------------------------------------------------
+
+dip_getopt "h,help:flag test:flag" "$@"
+
+if dip_opt help; then
+  usage
+  exit 0
+fi
+
+if dip_opt test; then
+  run_tests
+  exit $?
+fi
+
+# Check for fzf
+dip_have fzf || dip_die "fzf is required"
+
+# Get query from positional args
+QUERY="${DIP_ARGS[0]:-}"
+
+# Create temp file for mode state
 MODE_FILE="$(mktemp -t si.mode.XXXXXX)"
 cleanup() { rm -f "$MODE_FILE"; }
 trap cleanup EXIT
