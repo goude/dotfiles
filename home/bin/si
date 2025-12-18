@@ -23,36 +23,84 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 usage() {
   cat <<EOF
-${C_BOLD}${APP}${C_RESET}  ${C_DIM}fzf launcher for quick jumps / recall${C_RESET}
+${C_BOLD}${APP}${C_RESET}  ${C_DIM}fzf multi-mode search/jump tool${C_RESET}
 
-Modes
-  ${C_CYN}󰍉${C_RESET} Query mode:  ${C_BOLD}${APP}${C_RESET} 'string/regex'
-      Loads: history + env
-      Preview: none
+Usage
+  ${APP}            open fzf
+  ${APP} 'query'    open fzf with query pre-filled
+  ${APP} --help
 
-  ${C_CYN}󰊢${C_RESET} Browse mode: ${C_BOLD}${APP}${C_RESET}
-      Loads: git files + z --list (2nd column)
-      Preview: bat for files only
+Inside fzf
+  Ctrl-M   rotate mode: git → fd → history → env → rg
+  Ctrl-C   exit (no action)
+  Enter    act by mode:
+           git/fd   cd to file dir and open in \$EDITOR
+           history  pipe selection to cop
+           env      pipe selection to cop
+           rg       open match location in \$EDITOR
 
-Enter copies the selected payload via: ${C_BOLD}cop${C_RESET}
+Preview by mode
+  git/fd   file preview via bat/batcat/cat
+  history  shows command
+  env      shows value
+  rg       colored context for current query
 
-Deps: fzf (required). Optional: git, z, bat, cop.
+Deps: fzf (required). Optional: git, fd, rg, bat/batcat, cop.
 EOF
 }
 
-# ---------- args ----------
-case "${1-}" in
-  --help|-h)
-    usage
-    exit 0
-    ;;
-esac
+# ---------- self path ----------
+SELF="$0"
+if have realpath; then
+  SELF="$(realpath "$SELF")"
+elif have python3; then
+  SELF="$(python3 - <<PY
+import os,sys
+print(os.path.realpath(sys.argv[1]))
+PY
+"$SELF")"
+fi
 
-QUERY="${1-}"
+# ---------- mode state ----------
+modes=(git fd history env rg)
 
-have fzf || die "fzf is required"
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}"
+state_file="${state_dir}/si.mode"
+mkdir -p "$state_dir"
 
-# ---------- sources ----------
+mode_get() {
+  [[ -f "$state_file" ]] && cat "$state_file" 2>/dev/null || true
+}
+
+mode_set() {
+  printf "%s\n" "$1" >"$state_file"
+}
+
+mode_default() {
+  local m
+  m="$(mode_get)"
+  case "$m" in
+    git|fd|history|env|rg) printf "%s\n" "$m" ;;
+    *) printf "%s\n" "git" ;;
+  esac
+}
+
+mode_rotate() {
+  local cur next i
+  cur="$(mode_default)"
+
+  next="git"
+  for i in "${!modes[@]}"; do
+    if [[ "${modes[$i]}" == "$cur" ]]; then
+      next="${modes[$(((i + 1) % ${#modes[@]}))]}"
+      break
+    fi
+  done
+
+  mode_set "$next"
+}
+
+# ---------- source helpers ----------
 hist_source() {
   local fish_hist="${XDG_DATA_HOME:-$HOME/.local/share}/fish/fish_history"
   local bash_hist="${HISTFILE:-$HOME/.bash_history}"
@@ -82,114 +130,192 @@ git_files_source() {
   fi
 }
 
-z_list_source() {
-  have z || return 0
-  # We want the 2nd column from `z --list`.
-  # Different z implementations vary; this assumes: score <ws> path ...
-  z --list 2>/dev/null | awk 'NF >= 2 { print $2 }' || true
+fd_files_source() {
+  if have fd; then
+    fd --type f --hidden --follow --exclude .git 2>/dev/null || true
+  else
+    find . -type f -not -path '*/.git/*' 2>/dev/null | sed 's|^\./||' || true
+  fi
 }
 
-# ---------- list builders ----------
-# Row format: TYPE<TAB>DISPLAY<TAB>PAYLOAD
-mk_query_list() {
-  hist_source | awk 'NF { printf "h\t󰍉  %s\t%s\n", $0, $0 }' || true
-  env_source | awk -F= 'NF { printf "e\t󰆧  %s=%s\t%s\n", $1, substr($0, length($1)+2), $0 }' || true
+rg_source() {
+  local q="$1"
+  [[ -n "$q" ]] || return 0
+  have rg || return 0
+  rg -n --column --hidden --glob '!.git/*' --color=never -- "$q" . 2>/dev/null || true
 }
 
-mk_browse_list() {
-  git_files_source | awk 'NF { printf "g\t󰊢  %s\t%s\n", $0, $0 }' || true
-  z_list_source | awk 'NF { printf "z\t󰈔  %s\t%s\n", $0, $0 }' || true
+# ---------- list output (single column payload) ----------
+list_for_mode() {
+  local mode="$1" q="${2-}"
+  case "$mode" in
+    git) git_files_source ;;
+    fd) fd_files_source ;;
+    history) hist_source ;;
+    env) env_source ;;
+    rg) rg_source "$q" ;;
+    *) die "internal: unknown mode '$mode'" ;;
+  esac
 }
 
-# ---------- preview (browse mode only) ----------
-# Only preview for git files (type g), using bat if available.
-preview_cmd=$'bash -lc '\''
-set +u
-line="$1"
-[ -n "$line" ] || exit 0
+# ---------- preview helpers ----------
+best_cat() {
+  if have bat; then
+    printf "%s\n" "bat"
+  elif have batcat; then
+    printf "%s\n" "batcat"
+  else
+    printf "%s\n" "cat"
+  fi
+}
 
-IFS=$'\''\t'\'' read -r typ _ payload <<< "$line" || exit 0
-[ "${typ:-}" = "g" ] || exit 0
-[ -n "${payload:-}" ] || exit 0
+preview_for_mode() {
+  local mode="$1" q="$2" sel="$3"
 
-if command -v bat >/dev/null 2>&1; then
-  bat --style=numbers --color=always --line-range=:300 -- "$payload" 2>/dev/null || true
-else
-  sed -n '\''1,200p'\'' "$payload" 2>/dev/null || true
-fi
-'\'' -- "{}"'
-
-# ---------- run fzf ----------
-run_fzf() {
-  local mode="$1" list_fn="$2" query="$3" use_preview="$4"
-  local header prompt selected
+  [[ -n "$mode" ]] || exit 0
 
   case "$mode" in
-    query)
-      header="${C_BOLD}si${C_RESET}  ${C_DIM}history + env${C_RESET}"
-      prompt="󰱼  "
+    git|fd)
+      [[ -n "$sel" ]] || exit 0
+      [[ -f "$sel" ]] || { printf "%s\n" "$sel"; exit 0; }
+      case "$(best_cat)" in
+        bat) bat --style=numbers --color=always --line-range=:300 -- "$sel" 2>/dev/null || true ;;
+        batcat) batcat --style=numbers --color=always --line-range=:300 -- "$sel" 2>/dev/null || true ;;
+        cat) sed -n '1,200p' "$sel" 2>/dev/null || true ;;
+      esac
       ;;
-    browse)
-      header="${C_BOLD}si${C_RESET}  ${C_DIM}git files + z --list${C_RESET}"
-      prompt="󰊢  "
+    history)
+      [[ -n "$sel" ]] || exit 0
+      printf "󰍉  %s\n" "$sel"
       ;;
-    *)
-      die "internal: unknown mode '$mode'"
+    env)
+      [[ -n "$sel" ]] || exit 0
+      if [[ "$sel" == *"="* ]]; then
+        printf "󰆧  %s%s%s\n" "${C_BOLD}" "${sel%%=*}" "${C_RESET}"
+        printf "%s\n" "${sel#*=}"
+      else
+        printf "󰆧  %s\n" "$sel"
+      fi
+      ;;
+    rg)
+      [[ -n "$sel" ]] || exit 0
+      [[ -n "$q" ]] || exit 0
+      have rg || exit 0
+
+      local file line rest start end
+      file="${sel%%:*}"
+      rest="${sel#*:}"
+      line="${rest%%:*}"
+      case "$line" in ''|*[!0-9]*) line=1 ;; esac
+
+      rg --color=always -n --column --heading -C 3 -- "$q" "$file" 2>/dev/null || true
+
+      if [[ -f "$file" ]]; then
+        start=$((line > 20 ? line - 20 : 1))
+        end=$((line + 40))
+        case "$(best_cat)" in
+          bat) bat --style=numbers --color=always --highlight-line="$line" --line-range="$start:$end" -- "$file" 2>/dev/null || true ;;
+          batcat) batcat --style=numbers --color=always --highlight-line="$line" --line-range="$start:$end" -- "$file" 2>/dev/null || true ;;
+          cat) sed -n "${start},${end}p" "$file" 2>/dev/null || true ;;
+        esac
+      fi
       ;;
   esac
-
-  if [[ -z "$($list_fn | head -n 1 || true)" ]]; then
-    die "No candidates found for mode: $mode"
-  fi
-
-  if [[ "$use_preview" == "yes" ]]; then
-    selected="$(
-      $list_fn | fzf \
-        --ansi \
-        --delimiter=$'\t' \
-        --with-nth=2 \
-        --query="$query" \
-        --prompt="$prompt" \
-        --header="$header" \
-        --preview="$preview_cmd" \
-        --preview-window='right,60%,border-left,wrap' \
-        --bind 'ctrl-/:toggle-preview' \
-        --height=90% \
-        --border
-    )" || return 1
-  else
-    selected="$(
-      $list_fn | fzf \
-        --ansi \
-        --delimiter=$'\t' \
-        --with-nth=2 \
-        --query="$query" \
-        --prompt="$prompt" \
-        --header="$header" \
-        --height=90% \
-        --border
-    )" || return 1
-  fi
-
-  printf "%s\n" "$selected"
 }
 
-# ---------- choose mode ----------
-selected=""
-if [[ -n "$QUERY" ]]; then
-  selected="$(run_fzf "query" mk_query_list "$QUERY" "no" || true)"
-else
-  selected="$(run_fzf "browse" mk_browse_list "" "yes" || true)"
-fi
+# ---------- actions ----------
+open_in_editor() {
+  local path="$1" line="${2-}"
+  [[ -n "$path" ]] || return 0
 
-[[ -n "$selected" ]] || exit 0
+  local editor="${EDITOR:-vim}"
+  local dir base
+  dir="$(cd "$(dirname "$path")" && pwd)"
+  base="$(basename "$path")"
 
-# ---------- on-enter: copy via cop ----------
-IFS=$'\t' read -r _ _ payload <<<"$selected"
+  cd "$dir"
 
-if have cop; then
-  printf "%s" "$payload" | cop >/dev/null 2>&1 || true
-else
-  # fallback: still print to stdout (so it's usable in pipes)
-  printf "%s\n" "$payload"
-fi
+  if [[ -n "${line:-}" ]]; then
+    "$editor" "+$line" "$base"
+  else
+    "$editor" "$base"
+  fi
+}
+
+pipe_to_cop() {
+  local s="$1"
+  if have cop; then
+    printf "%s" "$s" | cop
+  else
+    printf "%s\n" "$s"
+  fi
+}
+
+# ---------- internal subcommands (used by fzf reload/preview) ----------
+case "${1-}" in
+  --help|-h)
+    usage
+    exit 0
+    ;;
+  --rotate)
+    mode_rotate
+    exit 0
+    ;;
+  --mode)
+    mode_default
+    exit 0
+    ;;
+  --list)
+    shift
+    list_for_mode "${1-}" "${2-}"
+    exit 0
+    ;;
+  --preview)
+    shift
+    preview_for_mode "${1-}" "${2-}" "${3-}"
+    exit 0
+    ;;
+esac
+
+# ---------- main ----------
+initial_query="${1-}"
+mode_set "$(mode_default)"
+
+header_static="${C_BOLD}${APP}${C_RESET}  ${C_DIM}Ctrl-M rotate: git → fd → history → env → rg   Ctrl-C exit${C_RESET}"
+
+selected="$(
+  fzf \
+    --ansi \
+    --query="$initial_query" \
+    --prompt="󰱼  " \
+    --header="$header_static" \
+    --border \
+    --height=90% \
+    --preview="$SELF --preview \$($SELF --mode) {q} {}" \
+    --preview-window='right,60%,border-left,wrap' \
+    --bind "ctrl-c:abort" \
+    --bind "ctrl-m:execute-silent($SELF --rotate)+reload($SELF --list \$($SELF --mode) {q})" \
+    --bind "change:reload($SELF --list \$($SELF --mode) {q})" \
+    --bind "start:reload($SELF --list \$($SELF --mode) {q})"
+)" || exit 0
+
+mode_now="$("$SELF" --mode)"
+
+case "$mode_now" in
+  git|fd)
+    open_in_editor "$selected"
+    ;;
+  history|env)
+    pipe_to_cop "$selected"
+    ;;
+  rg)
+    file="${selected%%:*}"
+    rest="${selected#*:}"
+    line="${rest%%:*}"
+    case "$line" in ''|*[!0-9]*) line=1 ;; esac
+    open_in_editor "$file" "$line"
+    ;;
+  *)
+    die "unknown mode: $mode_now"
+    ;;
+esac
