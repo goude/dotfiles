@@ -459,7 +459,10 @@ dip_test() {
   local name="$1"
   _DIP_TEST_CURRENT="$name"
   _DIP_TEST_COUNT=$((_DIP_TEST_COUNT + 1))
-  [[ "$_DIP_TEST_VERBOSE" -ne 0 ]] && printf "  %s•%s %s... " "$C_DIM" "$C_RESET" "$name"
+  if [[ "$_DIP_TEST_VERBOSE" -ne 0 ]]; then
+    printf "  %s•%s %s... " "$C_DIM" "$C_RESET" "$name"
+  fi
+  return 0
 }
 
 _dip_test_pass() {

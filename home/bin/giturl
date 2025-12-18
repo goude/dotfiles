@@ -1,41 +1,36 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# giturl — print a GitHub URL to a file on the current branch (or commit sha)
 
-# ----- tiny color helpers -----
-is_tty=0
-[[ -t 1 ]] && is_tty=1
+source "$(command -v dip)" || { echo "dip not found" >&2; exit 1; }
 
-c_reset=""; c_dim=""; c_bold=""; c_red=""; c_green=""; c_cyan=""; c_yellow=""
-if [[ "$is_tty" -eq 1 ]] && [[ "${NO_COLOR:-}" == "" ]] ; then
-  c_reset=$'\033[0m'
-  c_dim=$'\033[2m'
-  c_bold=$'\033[1m'
-  c_red=$'\033[31m'
-  c_green=$'\033[32m'
-  c_yellow=$'\033[33m'
-  c_cyan=$'\033[36m'
-fi
+dip_strict
+dip_init_colors
 
-err() { echo "${c_red}giturl:${c_reset} $*" >&2; exit 1; }
+# ---- usage -----------------------------------------------------------------
 
 usage() {
+  dip_usage_header "giturl" "print a GitHub URL to a file on the current branch (or commit sha)"
+
   cat <<EOF
-${c_bold}giturl${c_reset} — print a GitHub URL to a file on the current branch (or commit sha)
+${C_GOLD}Usage:${C_RESET}
+  ${C_CYAN}giturl${C_RESET} ${C_YELLOW}<path>${C_RESET} ${C_DIM}[start_line [end_line]]${C_RESET}
+  ${C_CYAN}giturl${C_RESET} ${C_DIM}--sha${C_RESET} ${C_YELLOW}<path>${C_RESET} ${C_DIM}[start_line [end_line]]${C_RESET}
+  ${C_CYAN}giturl${C_RESET} ${C_DIM}--help${C_RESET}
 
-${c_bold}Usage${c_reset}
-  ${c_cyan}giturl${c_reset} ${c_yellow}<path>${c_reset} ${c_dim}[start_line [end_line]]${c_reset}
-  ${c_cyan}giturl${c_reset} ${c_dim}--sha${c_reset} ${c_yellow}<path>${c_reset} ${c_dim}[start_line [end_line]]${c_reset}
-  ${c_cyan}giturl${c_reset} ${c_dim}--help${c_reset}
+${C_GOLD}Options:${C_RESET}
+$(dip_usage_opt "" sha "Use commit SHA instead of branch name")
+$(dip_usage_opt h help "Show this help")
+$(dip_usage_opt "" test "Run self-tests")
 
-${c_bold}Examples${c_reset}
-  ${c_cyan}giturl${c_reset} README.md
-  ${c_cyan}giturl${c_reset} tools.js
-  ${c_cyan}giturl${c_reset} src/main.py 10
-  ${c_cyan}giturl${c_reset} src/main.py 10 42
-  ${c_cyan}giturl${c_reset} ${c_dim}--sha${c_reset} tools.js
-  ${c_cyan}giturl${c_reset} ${c_dim}--sha${c_reset} src/main.py 10 42
+${C_GOLD}Examples:${C_RESET}
+$(dip_usage_example "giturl README.md")
+$(dip_usage_example "giturl tools.js")
+$(dip_usage_example "giturl src/main.py 10" "with line number")
+$(dip_usage_example "giturl src/main.py 10 42" "with line range")
+$(dip_usage_example "giturl --sha tools.js" "use commit SHA")
+$(dip_usage_example "giturl --sha src/main.py 10 42")
 
-${c_dim}Notes:${c_reset}
+${C_DIM}Notes:${C_RESET}
   • Paths are interpreted relative to your current directory.
   • Default output uses the current branch name (even if it's main).
   • With --sha, output uses the commit SHA of HEAD (even on a branch).
@@ -44,42 +39,26 @@ ${c_dim}Notes:${c_reset}
 EOF
 }
 
-# ----- args -----
-use_sha=0
+# ---- path helpers ----------------------------------------------------------
 
-if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-  usage
-  exit 0
-fi
+# Normalize a path (resolve . and ..)
+normalize_path() {
+  local path="$1"
+  if dip_have python3; then
+    python3 -c 'import os,sys; print(os.path.normpath(sys.argv[1]))' "$path"
+  elif dip_have python; then
+    python -c 'import os,sys; print(os.path.normpath(sys.argv[1]))' "$path"
+  else
+    # Basic fallback - just echo it back
+    printf "%s" "$path"
+  fi
+}
 
-if [[ "${1:-}" == "--sha" ]]; then
-  use_sha=1
-  shift
-fi
-
-[[ $# -ge 1 ]] || { usage; exit 2; }
-
-input_path="$1"
-start_line="${2:-}"
-end_line="${3:-}"
-
-# ----- repo basics -----
-git rev-parse --is-inside-work-tree >/dev/null 2>&1 || err "not inside a git repo"
-root="$(git rev-parse --show-toplevel)"
-
-# Resolve the user's path from *current directory*, then convert to repo-relative.
-abs_input="$(cd "$PWD" && pwd)/$input_path"
-abs_norm="$(
-  python3 - <<'PY' "$abs_input"
-import os, sys
-print(os.path.normpath(sys.argv[1]))
-PY
-)" || abs_norm="$abs_input"
-
-[[ -e "$abs_norm" ]] || err "no such file: $input_path"
-
-rel="$(
-  python3 - <<'PY' "$abs_norm" "$root"
+# Get path relative to repo root, with / separators
+repo_relative_path() {
+  local abs_path="$1" repo_root="$2"
+  if dip_have python3; then
+    python3 - "$abs_path" "$repo_root" <<'PY'
 import os, sys
 p = os.path.abspath(sys.argv[1])
 root = os.path.abspath(sys.argv[2])
@@ -87,55 +66,200 @@ try:
     rel = os.path.relpath(p, root)
 except ValueError:
     rel = p
-# Guard against paths outside repo
-if rel.startswith(".."+os.sep) or rel == "..":
+if rel.startswith(".." + os.sep) or rel == "..":
     print("", end="")
 else:
     print(rel.replace(os.sep, "/"), end="")
 PY
-)" || rel=""
+  elif dip_have python; then
+    python - "$abs_path" "$repo_root" <<'PY'
+import os, sys
+p = os.path.abspath(sys.argv[1])
+root = os.path.abspath(sys.argv[2])
+try:
+    rel = os.path.relpath(p, root)
+except ValueError:
+    rel = p
+if rel.startswith(".." + os.sep) or rel == "..":
+    print "", 
+else:
+    print rel.replace(os.sep, "/"),
+PY
+  else
+    # Fallback: try to compute relative path with shell
+    local rel
+    rel="${abs_path#$repo_root/}"
+    if [[ "$rel" == "$abs_path" ]]; then
+      # Path not under repo root
+      printf ""
+    else
+      printf "%s" "$rel"
+    fi
+  fi
+}
 
-[[ -n "$rel" ]] || err "path is outside repo: $input_path"
+# ---- main logic ------------------------------------------------------------
 
-# ----- remote parsing (GitHub only, as requested) -----
-remote_url="$(git remote get-url origin 2>/dev/null || true)"
-[[ -n "$remote_url" ]] || err "no 'origin' remote found"
+make_github_url() {
+  local input_path="$1"
+  local start_line="${2:-}"
+  local end_line="${3:-}"
+  local use_sha="${4:-0}"
 
-case "$remote_url" in
-  git@github.com:*.git)       base="https://github.com/${remote_url#git@github.com:}"; base="${base%.git}" ;;
-  git@github.com:*)           base="https://github.com/${remote_url#git@github.com:}" ;;
-  https://github.com/*.git)   base="${remote_url%.git}" ;;
-  https://github.com/*)       base="$remote_url" ;;
-  *) err "remote 'origin' is not a GitHub URL: $remote_url" ;;
-esac
+  # Check we're in a git repo
+  dip_is_git_repo || dip_die "not inside a git repo"
 
-# ----- choose ref -----
-# Default: branch name if possible. With --sha: commit SHA (even on a branch).
-branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
-sha="$(git rev-parse HEAD 2>/dev/null || true)"
-[[ -n "$sha" ]] || err "could not resolve HEAD"
+  local root
+  root="$(git rev-parse --show-toplevel)"
 
-if [[ "$use_sha" -eq 1 ]]; then
-  ref="$sha"
-else
-  if [[ -n "$branch" ]]; then
+  # Resolve path - use pwd -P to resolve symlinks (macOS /tmp -> /private/tmp)
+  local abs_input abs_norm
+  abs_input="$(cd "$PWD" && pwd -P)/$input_path"
+  abs_norm="$(normalize_path "$abs_input")" || abs_norm="$abs_input"
+
+  [[ -e "$abs_norm" ]] || dip_die "no such file: $input_path"
+
+  local rel
+  rel="$(repo_relative_path "$abs_norm" "$root")" || rel=""
+  [[ -n "$rel" ]] || dip_die "path is outside repo: $input_path"
+
+  # Parse remote URL
+  local remote_url
+  remote_url="$(git remote get-url origin 2>/dev/null || true)"
+  [[ -n "$remote_url" ]] || dip_die "no 'origin' remote found"
+
+  local base
+  case "$remote_url" in
+    git@github.com:*.git)     base="https://github.com/${remote_url#git@github.com:}"; base="${base%.git}" ;;
+    git@github.com:*)         base="https://github.com/${remote_url#git@github.com:}" ;;
+    https://github.com/*.git) base="${remote_url%.git}" ;;
+    https://github.com/*)     base="$remote_url" ;;
+    *) dip_die "remote 'origin' is not a GitHub URL: $remote_url" ;;
+  esac
+
+  # Choose ref (branch or SHA)
+  local branch sha ref
+  branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  sha="$(git rev-parse HEAD 2>/dev/null || true)"
+  [[ -n "$sha" ]] || dip_die "could not resolve HEAD"
+
+  if [[ "$use_sha" -eq 1 ]]; then
+    ref="$sha"
+  elif [[ -n "$branch" ]]; then
     ref="$branch"
   else
     ref="$sha"
   fi
-fi
 
-url="$base/blob/$ref/$rel"
+  local url="$base/blob/$ref/$rel"
 
-# Optional line fragment
-if [[ -n "$start_line" ]]; then
-  [[ "$start_line" =~ ^[0-9]+$ ]] || err "start_line must be an integer"
-  if [[ -n "$end_line" ]]; then
-    [[ "$end_line" =~ ^[0-9]+$ ]] || err "end_line must be an integer"
-    url="${url}#L${start_line}-L${end_line}"
-  else
-    url="${url}#L${start_line}"
+  # Add line fragment if specified
+  if [[ -n "$start_line" ]]; then
+    [[ "$start_line" =~ ^[0-9]+$ ]] || dip_die "start_line must be an integer"
+    if [[ -n "$end_line" ]]; then
+      [[ "$end_line" =~ ^[0-9]+$ ]] || dip_die "end_line must be an integer"
+      url="${url}#L${start_line}-L${end_line}"
+    else
+      url="${url}#L${start_line}"
+    fi
   fi
+
+  printf "%s\n" "$url"
+}
+
+# ---- tests -----------------------------------------------------------------
+
+run_tests() {
+  dip_test_suite "giturl tests"
+
+  local self_path
+  self_path="$(dip_realpath "$0")"
+
+  local tmpdir orig_dir
+  orig_dir="$(pwd)"
+  tmpdir=$(dip_mktemp_dir "giturl-test")
+  # Use realpath to resolve symlinks (macOS /tmp -> /private/tmp)
+  tmpdir="$(dip_realpath "$tmpdir")"
+  cd "$tmpdir" || dip_die "cannot cd to temp dir"
+
+  # Create a test git repo
+  git init -q .
+  git config user.email "test@test.com"
+  git config user.name "Test"
+  echo "# Test" > README.md
+  mkdir -p src
+  echo "print('hello')" > src/main.py
+  git add .
+  git commit -q -m "initial"
+  git remote add origin "git@github.com:testuser/testrepo.git"
+
+  dip_test "giturl --help works"
+  dip_assert_ok "help flag" "$self_path" --help
+
+  dip_test "giturl README.md produces URL"
+  local url
+  url=$("$self_path" README.md)
+  dip_assert_contains "has github.com" "$url" "github.com"
+  dip_assert_contains "has blob" "$url" "/blob/"
+  dip_assert_contains "has README.md" "$url" "README.md"
+
+  dip_test "giturl with line number"
+  url=$("$self_path" README.md 10)
+  dip_assert_contains "has #L10" "$url" "#L10"
+
+  dip_test "giturl with line range"
+  url=$("$self_path" README.md 10 20)
+  dip_assert_contains "has line range" "$url" "#L10-L20"
+
+  dip_test "giturl --sha uses commit hash"
+  url=$("$self_path" --sha README.md)
+  local sha
+  sha=$(git rev-parse HEAD)
+  dip_assert_contains "has SHA" "$url" "$sha"
+
+  dip_test "giturl src/main.py works"
+  url=$("$self_path" src/main.py)
+  dip_assert_contains "has src/main.py" "$url" "src/main.py"
+
+  dip_test "giturl fails on nonexistent file"
+  dip_assert_fail "nonexistent file" "$self_path" nonexistent.xyz
+
+  dip_test "giturl fails outside git repo"
+  cd /tmp
+  dip_assert_fail "outside repo" "$self_path" /etc/passwd
+
+  # Cleanup
+  cd "$orig_dir"
+  rm -rf "$tmpdir"
+
+  dip_test_summary
+}
+
+# ---- main ------------------------------------------------------------------
+
+dip_getopt "h,help:flag sha:flag test:flag" "$@"
+
+if dip_opt help; then
+  usage
+  exit 0
 fi
 
-echo "$url"
+if dip_opt test; then
+  run_tests
+  exit $?
+fi
+
+use_sha=0
+dip_opt sha && use_sha=1
+
+# Need at least a path argument
+if [[ ${#DIP_ARGS[@]} -lt 1 ]]; then
+  usage
+  exit 2
+fi
+
+input_path="${DIP_ARGS[0]}"
+start_line="${DIP_ARGS[1]:-}"
+end_line="${DIP_ARGS[2]:-}"
+
+make_github_url "$input_path" "$start_line" "$end_line" "$use_sha"

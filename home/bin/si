@@ -15,7 +15,7 @@ Usage
   si --help
 
 Inside fzf
-  Ctrl-M   rotate mode: git → fd → history → env → rg
+  Ctrl-R   rotate mode: git → fd → history → env → rg
   Ctrl-C   exit (no action)
   Enter    act by mode:
            git/fd   cd to file dir and open in $EDITOR
@@ -29,6 +29,7 @@ Preview by mode
   env      shows value
   rg       colored context for current query
 
+Note: Ctrl-M == Enter in terminals, so rotation cannot be on Ctrl-M.
 Deps: fzf (required). Optional: git, fd, rg, bat/batcat, cop.
 EOF
 }
@@ -193,7 +194,7 @@ case "${1-}" in
     exit 0
     ;;
   --preview)
-    # --preview MODE_FILE QUERY "{1}\t{2}"
+    # --preview MODE_FILE QUERY "{mode}\t{payload}"
     mf="${2-}"
     q="${3-}"
     line="${4-}"
@@ -235,7 +236,7 @@ trap cleanup EXIT
 
 mode_set "$MODE_FILE" "git"
 
-header='Ctrl-M rotate: git → fd → history → env → rg   Ctrl-C exit'
+header='Ctrl-R rotate: git → fd → history → env → rg   Ctrl-C exit'
 
 selected="$(
   fzf \
@@ -251,7 +252,7 @@ selected="$(
     --preview-window='right,60%,border-left,wrap' \
     --bind "start:reload($SELF --list $MODE_FILE {q})" \
     --bind "change:reload($SELF --list $MODE_FILE {q})" \
-    --bind "ctrl-m:execute-silent($SELF --mode-rotate $MODE_FILE)+reload($SELF --list $MODE_FILE {q})" \
+    --bind "ctrl-r:execute-silent($SELF --mode-rotate $MODE_FILE)+reload($SELF --list $MODE_FILE {q})" \
     --bind "ctrl-c:abort"
 )" || exit 0
 
