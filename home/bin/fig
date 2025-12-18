@@ -306,9 +306,14 @@ print_missing_summary() {
 run_tests() {
   dip_test_suite "fig tests"
 
-  local tmpdir
+  # Get absolute path to this script for self-invocation
+  local self_path
+  self_path="$(dip_realpath "$0")"
+
+  local tmpdir orig_dir
+  orig_dir="$(pwd)"
   tmpdir=$(dip_mktemp_dir "fig-test")
-  cd "$tmpdir"
+  cd "$tmpdir" || dip_die "cannot cd to temp dir"
 
   # Create test files
   echo "hello world" > test.txt
@@ -322,19 +327,23 @@ run_tests() {
   dip_assert_file "random.bin created" "random.bin"
 
   dip_test "fig runs on text file"
-  dip_assert_ok "fig test.txt" "$0" test.txt
+  dip_assert_ok "fig test.txt" "$self_path" test.txt
 
   dip_test "fig runs on binary file"
-  dip_assert_ok "fig random.bin" "$0" random.bin
+  dip_assert_ok "fig random.bin" "$self_path" random.bin
 
   dip_test "fig -b runs (brief mode)"
-  dip_assert_ok "fig -b test.txt" "$0" -b test.txt
+  dip_assert_ok "fig -b test.txt" "$self_path" -b test.txt
 
   dip_test "fig fails on nonexistent file"
-  dip_assert_fail "fig nonexistent" "$0" nonexistent.xyz
+  dip_assert_fail "fig nonexistent" "$self_path" nonexistent.xyz
 
   dip_test "fig --help exits 0"
-  dip_assert_ok "fig --help" "$0" --help
+  dip_assert_ok "fig --help" "$self_path" --help
+
+  # Clean up: go back and remove temp dir
+  cd "$orig_dir"
+  rm -rf "$tmpdir"
 
   dip_test_summary
 }
