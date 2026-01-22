@@ -8,6 +8,8 @@ alias cp='cp -i'
 alias df='df -h'
 alias ..='cd ..'
 alias ...='cd ../..'
+alias ....='cd ../../..'
+alias .....='cd ../../../..'
 alias ta='tmux attach || tmux new'
 alias n='nvim'
 
