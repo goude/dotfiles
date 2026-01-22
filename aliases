@@ -6,10 +6,13 @@ alias cp='cp -i'
 
 # basic aliases
 alias df='df -h'
+
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
 alias .....='cd ../../../..'
+#alias cdr='cd "$(git rev-parse --show-toplevel)"'
+
 alias ta='tmux attach || tmux new'
 alias n='nvim'
 
