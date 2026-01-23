@@ -1,5 +1,5 @@
 function cdr
-    set -l root (git rev-parse --show-toplevel ^/dev/null)
+    set -l root (git rev-parse --show-toplevel)
     or begin
         echo "not in a git repo"
         return 1
