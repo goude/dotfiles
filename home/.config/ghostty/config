@@ -1,0 +1,43 @@
+# Font
+font-family = "IosevkaTerm Nerd Font"
+font-size = 18
+font-synthetic-style = bold,italic
+font-thicken = true
+font-thicken-strength = 14
+font-shaping-break = cursor
+grapheme-width-method = unicode
+
+# Window / GPU / compositing
+window-padding-x = 12
+window-padding-y = 10
+window-vsync = true
+background-opacity = 1
+background-blur = false
+alpha-blending = native
+window-colorspace = srgb
+window-inherit-working-directory = true
+window-inherit-font-size = true
+unfocused-split-opacity = 0.85
+
+# Cursor
+cursor-style = block
+cursor-opacity = 1
+cursor-click-to-move = true
+
+# Scrollback
+scrollback-limit = 1000000
+scroll-to-bottom = keystroke,no-output
+
+# Clipboard
+copy-on-select = true
+clipboard-trim-trailing-spaces = true
+clipboard-paste-protection = true
+clipboard-paste-bracketed-safe = true
+
+# Visual calm
+mouse-hide-while-typing = true
+minimum-contrast = 1
+
+# Behavior
+confirm-close-surface = false
+quit-after-last-window-closed = false
