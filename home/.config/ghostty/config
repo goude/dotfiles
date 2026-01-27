@@ -1,9 +1,9 @@
 # Font
 font-family = "IosevkaTerm Nerd Font"
 font-size = 18
-font-synthetic-style = bold,italic
+#font-synthetic-style = none
 font-thicken = true
-font-thicken-strength = 14
+font-thicken-strength = 5
 font-shaping-break = cursor
 grapheme-width-method = unicode
 
@@ -41,3 +41,7 @@ minimum-contrast = 1
 # Behavior
 confirm-close-surface = false
 quit-after-last-window-closed = false
+
+# Shader
+custom-shader = ~/.config/ghostty/shaders/in-game-crt-cursor.glsl
+custom-shader = ~/.config/ghostty/shaders/shader.glsl
