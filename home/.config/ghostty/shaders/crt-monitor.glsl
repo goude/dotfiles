@@ -1,6 +1,6 @@
 // --- user-tweakable settings ---
 float warp = 0.10;        // CRT curvature
-float scan = 0.8;        // scanline darkness
+float scan = 0.5;        // scanline darkness
 
 float brightness = 1.0;  // 1.0 = neutral
 float contrast   = 1.0;  // 1.0 = neutral
@@ -45,7 +45,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     uv.y -= 0.5; uv.y *= 1.0 + (dc.x * (0.4 * warp)); uv.y += 0.5;
 
     // scanlines
-    float applyScan = abs(sin(fragCoord.y) * 0.25 * scan);
+    float applyScan = abs(sin(fragCoord.y * 0.5) * 0.25 * scan);
 
     // base color
     vec3 color = texture(iChannel0, uv).rgb;
