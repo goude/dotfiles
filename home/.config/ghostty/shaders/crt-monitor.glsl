@@ -23,8 +23,8 @@ const float scanDuration = 2.5;
 const float scanWidth = 0.02;
 const float afterglowLength = 0.15;
 const float scanIntensity = 0.3;
-const float minInterval = 45.0;
-const float maxInterval = 75.0;
+const float minInterval = 179.0;
+const float maxInterval = 181.0;
 
 const float vignetteStrength = 0.3;  // 0 = none, 1 = strong darkening at edges
 const float vignetteSoftness = 0.4;  // how gradual the falloff is
