@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # si — fzf multi-mode search/jump tool
 
-source "$(command -v dip)" || { echo "dip not found" >&2; exit 1; }
+source "$(command -v dip)" || {
+  echo "dip not found" >&2
+  exit 1
+}
 
 dip_strict
 dip_init_colors
@@ -22,7 +25,7 @@ $(dip_usage_opt h help "Show this help")
 $(dip_usage_opt "" test "Run self-tests")
 
 ${C_GOLD}Inside fzf:${C_RESET}
-  Ctrl-R   rotate mode: git → fd → history → env → rg
+  Ctrl-R   rotate mode: rg → git → fd → history → env
   Ctrl-C   exit (no action)
   Enter    act by mode:
            git/fd   cd to file dir and open in \$EDITOR
@@ -67,7 +70,7 @@ pipe_to_cop() {
 
 # ---- mode management -------------------------------------------------------
 
-modes=(git fd history env rg)
+modes=(rg git fd history env)
 
 mode_get() {
   local f="$1"
@@ -82,9 +85,9 @@ mode_set() {
 mode_rotate() {
   local f="$1" cur next i
   cur="$(mode_get "$f")"
-  case "$cur" in git|fd|history|env|rg) ;; *) cur="git" ;; esac
+  case "$cur" in rg | git | fd | history | env) ;; *) cur="rg" ;; esac
 
-  next="git"
+  next="rg"
   for i in "${!modes[@]}"; do
     if [[ "${modes[$i]}" == "$cur" ]]; then
       next="${modes[$(((i + 1) % ${#modes[@]}))]}"
@@ -107,9 +110,9 @@ fd_files() {
   if dip_have fd; then
     fd --type f --hidden --follow --exclude .git 2>/dev/null | awk '{ print "fd\t" $0 }' || true
   else
-    find . -type f -not -path '*/.git/*' 2>/dev/null \
-      | sed 's|^\./||' \
-      | awk '{ print "fd\t" $0 }' || true
+    find . -type f -not -path '*/.git/*' 2>/dev/null |
+      sed 's|^\./||' |
+      awk '{ print "fd\t" $0 }' || true
   fi
 }
 
@@ -119,14 +122,14 @@ hist_items() {
   local bash_hist="${HISTFILE:-$HOME/.bash_history}"
 
   if [[ -f "$fish" ]]; then
-    sed -n 's/^[[:space:]]*cmd:[[:space:]]*//p' "$fish" 2>/dev/null \
-      | sed 's/^"\(.*\)"$/\1/' 2>/dev/null \
-      | awk '{ print "history\t" $0 }' || true
+    sed -n 's/^[[:space:]]*cmd:[[:space:]]*//p' "$fish" 2>/dev/null |
+      sed 's/^"\(.*\)"$/\1/' 2>/dev/null |
+      awk '{ print "history\t" $0 }' || true
   fi
 
   if [[ -f "$zsh" ]]; then
-    sed 's/^: [0-9]\+:[0-9]\+;//' "$zsh" 2>/dev/null \
-      | awk '{ print "history\t" $0 }' || true
+    sed 's/^: [0-9]\+:[0-9]\+;//' "$zsh" 2>/dev/null |
+      awk '{ print "history\t" $0 }' || true
   fi
 
   if [[ -f "$bash_hist" ]]; then
@@ -142,8 +145,8 @@ rg_items() {
   local q="$1"
   [[ -n "$q" ]] || return 0
   dip_have rg || return 0
-  rg -n --column --hidden --glob '!.git/*' --color=never -- "$q" . 2>/dev/null \
-    | awk '{ print "rg\t" $0 }' || true
+  rg -n --column --hidden --glob '!.git/*' --color=never -- "$q" . 2>/dev/null |
+    awk '{ print "rg\t" $0 }' || true
 }
 
 # ---- preview ---------------------------------------------------------------
@@ -153,27 +156,27 @@ do_preview() {
   local bat_cmd
 
   case "$mode" in
-    git|fd)
-      [[ -f "$payload" ]] || return 0
-      bat_cmd="$(dip_best_cat)"
-      case "$bat_cmd" in
-        bat) bat --color=always --line-range=:300 -- "$payload" 2>/dev/null || true ;;
-        batcat) batcat --color=always --line-range=:300 -- "$payload" 2>/dev/null || true ;;
-        cat) sed -n '1,200p' "$payload" 2>/dev/null || true ;;
-      esac
-      ;;
-    history)
-      printf "%s\n" "$payload"
-      ;;
-    env)
-      printf "%s\n" "${payload#*=}"
-      ;;
-    rg)
-      dip_have rg || return 0
-      [[ -n "$query" ]] || return 0
-      local file="${payload%%:*}"
-      rg --color=always -n -C 3 -- "$query" "$file" 2>/dev/null || true
-      ;;
+  git | fd)
+    [[ -f "$payload" ]] || return 0
+    bat_cmd="$(dip_best_cat)"
+    case "$bat_cmd" in
+    bat) bat --color=always --line-range=:300 -- "$payload" 2>/dev/null || true ;;
+    batcat) batcat --color=always --line-range=:300 -- "$payload" 2>/dev/null || true ;;
+    cat) sed -n '1,200p' "$payload" 2>/dev/null || true ;;
+    esac
+    ;;
+  history)
+    printf "%s\n" "$payload"
+    ;;
+  env)
+    printf "%s\n" "${payload#*=}"
+    ;;
+  rg)
+    dip_have rg || return 0
+    [[ -n "$query" ]] || return 0
+    local file="${payload%%:*}"
+    rg --color=always -n -C 3 -- "$query" "$file" 2>/dev/null || true
+    ;;
   esac
 }
 
@@ -194,7 +197,7 @@ run_tests() {
     dip_test_summary
     return $?
   fi
-  _dip_test_pass  # fzf exists
+  _dip_test_pass # fzf exists
 
   dip_test "git_files runs without error"
   dip_assert_ok "git_files" bash -c "source '$self_path' --source-only 2>/dev/null; git_files >/dev/null 2>&1" || true
@@ -228,44 +231,44 @@ run_tests() {
 SELF="$(dip_realpath "$0")"
 
 case "${1:-}" in
-  --mode-get)
-    mode_get "${2:-}"
-    exit 0
-    ;;
-  --mode-rotate)
-    mode_rotate "${2:-}"
-    exit 0
-    ;;
-  --list)
-    mf="${2:-}"
-    q="${3:-}"
-    m="$(mode_get "$mf")"
-    case "$m" in
-      git) git_files ;;
-      fd) fd_files ;;
-      history) hist_items ;;
-      env) env_items ;;
-      rg) rg_items "$q" ;;
-      *) git_files ;;
-    esac
-    exit 0
-    ;;
-  --preview)
-    mf="${2:-}"
-    q="${3:-}"
-    line="${4:-}"
+--mode-get)
+  mode_get "${2:-}"
+  exit 0
+  ;;
+--mode-rotate)
+  mode_rotate "${2:-}"
+  exit 0
+  ;;
+--list)
+  mf="${2:-}"
+  q="${3:-}"
+  m="$(mode_get "$mf")"
+  case "$m" in
+  rg) rg_items "$q" ;;
+  git) git_files ;;
+  fd) fd_files ;;
+  history) hist_items ;;
+  env) env_items ;;
+  *) git_files ;;
+  esac
+  exit 0
+  ;;
+--preview)
+  mf="${2:-}"
+  q="${3:-}"
+  line="${4:-}"
 
-    [[ -n "$line" ]] || exit 0
-    IFS=$'\t' read -r mode payload <<<"$line" || exit 0
-    [[ -n "${mode:-}" && -n "${payload:-}" ]] || exit 0
+  [[ -n "$line" ]] || exit 0
+  IFS=$'\t' read -r mode payload <<<"$line" || exit 0
+  [[ -n "${mode:-}" && -n "${payload:-}" ]] || exit 0
 
-    do_preview "$mode" "$payload" "$q"
-    exit 0
-    ;;
-  --source-only)
-    # For testing: just source the functions, don't run main
-    exit 0
-    ;;
+  do_preview "$mode" "$payload" "$q"
+  exit 0
+  ;;
+--source-only)
+  # For testing: just source the functions, don't run main
+  exit 0
+  ;;
 esac
 
 # ---- main ------------------------------------------------------------------
@@ -293,9 +296,9 @@ MODE_FILE="$(mktemp -t si.mode.XXXXXX)"
 cleanup() { rm -f "$MODE_FILE"; }
 trap cleanup EXIT
 
-mode_set "$MODE_FILE" "git"
+mode_set "$MODE_FILE" "rg"
 
-header='Ctrl-R rotate: git → fd → history → env → rg   Ctrl-C exit'
+header='Ctrl-R rotate: rg → git → fd → history → env  Ctrl-C exit'
 
 selected="$(
   fzf \
@@ -318,17 +321,17 @@ selected="$(
 IFS=$'\t' read -r mode payload <<<"$selected"
 
 case "$mode" in
-  git|fd)
-    open_in_editor "$payload"
-    ;;
-  history|env)
-    pipe_to_cop "$payload"
-    ;;
-  rg)
-    file="${payload%%:*}"
-    rest="${payload#*:}"
-    line="${rest%%:*}"
-    case "$line" in ''|*[!0-9]*) line=1 ;; esac
-    open_in_editor "$file" "$line"
-    ;;
+git | fd)
+  open_in_editor "$payload"
+  ;;
+history | env)
+  pipe_to_cop "$payload"
+  ;;
+rg)
+  file="${payload%%:*}"
+  rest="${payload#*:}"
+  line="${rest%%:*}"
+  case "$line" in '' | *[!0-9]*) line=1 ;; esac
+  open_in_editor "$file" "$line"
+  ;;
 esac
