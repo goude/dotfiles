@@ -8,7 +8,7 @@
 
 
 // Settings:
-#define TRAIL_MIN_DISTANCE 0.1
+#define TRAIL_MIN_DISTANCE 0.2
 #define GLOW_COLOR_OVERRIDE_THRESHOLD 0.1
 #define GLOW_COLOR_OVERRIDE_CURRENT 0.2, 0.4, 1.0
 #define GLOW_COLOR_OVERRIDE_PREVIOUS 0.4, 0.1, 1.0
@@ -154,7 +154,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     // soft outer bloom
     float bloomRadius = 0.15 + dCenter * 0.6;
     float bloom = pow(smoothstep(bloomRadius, 0.0, dTrail), 2.0);
-    vec4 softBloom = glowColor * bloom * 0.6;
+    vec4 softBloom = glowColor * bloom * 0.1;
 
     // motion-gated spark particles
     float speed = clamp(dCenter * 8.0, 0.0, 1.0);
@@ -164,12 +164,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     spark *= 0.6 + 0.4 * sin(iTime * 40.0);
 
     vec4 sparkColor = mix(prevColor, currColor, dTip) + 0.8;
-
-    // subtle CRT energy shimmer
-    float shimmer = 0.96 + 0.04 * sin(iTime * 25.0 + uv.y * iResolution.y * 0.1);
-
-    vec4 enhanced = trail + softBloom + spark * sparkColor;
-    enhanced.rgb *= shimmer;
+    vec4 enhanced = trail + spark * sparkColor + softBloom;
 
     fragColor = mix(fragColor, enhanced, tVisible);
 }

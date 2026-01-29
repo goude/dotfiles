@@ -1,23 +1,153 @@
+# ~/.config/starship.toml
+"$schema" = 'https://starship.rs/config-schema.json'
 add_newline = false
+command_timeout = 500
 
-[kubernetes]
-disabled = true
+# ─────────────────────────────────────────────────────────────
+# PROMPT FORMAT - explicit ordering, right-side info
+# ─────────────────────────────────────────────────────────────
+format = """
+$directory\
+$git_branch\
+$git_state\
+$git_status\
+$python\
+$nodejs\
+$rust\
+$c\
+$docker_context\
+${custom.gitmail}\
+$cmd_duration\
+$line_break\
+$character"""
+
+right_format = """$time${custom.disk_space}"""
+
+# ─────────────────────────────────────────────────────────────
+# CORE MODULES
+# ─────────────────────────────────────────────────────────────
+
+[directory]
+truncation_length = 4
+truncate_to_repo = true
+style = 'bold cyan'
+
+[character]
+success_symbol = '[❯](bold green)'
+error_symbol = '[❯](bold red)'
+vimcmd_symbol = '[❮](bold yellow)'  # Visual indicator for vim mode
+
+[cmd_duration]
+min_time = 2_000
+format = '[$duration]($style) '
+style = 'bold yellow'
+
+# ─────────────────────────────────────────────────────────────
+# GIT - detailed status for complex repo work
+# ─────────────────────────────────────────────────────────────
+
+[git_branch]
+format = '[$symbol$branch(:$remote_branch)]($style) '
+symbol = ''
+style = 'bold purple'
+truncation_length = 20
+
+[git_state]
+format = '[\($state( $progress_current/$progress_total)\)]($style) '
+style = 'bold yellow'
+
+[git_status]
+format = '([$all_status$ahead_behind]($style) )'
+style = 'bold red'
+conflicted = '='
+ahead = '⇡${count}'
+behind = '⇣${count}'
+diverged = '⇕⇡${ahead_count}⇣${behind_count}'
+untracked = '?${count}'
+stashed = '*${count}'
+modified = '!${count}'
+staged = '+${count}'
+deleted = '✘${count}'
+
+# ─────────────────────────────────────────────────────────────
+# LANGUAGES - only what you actually use
+# ─────────────────────────────────────────────────────────────
 
 [python]
-disabled = true
+python_binary = ['python3', 'python']
+detect_extensions = ['py']
+detect_files = ['pyproject.toml', 'setup.py', 'requirements.txt', '.python-version', 'Pipfile']
+detect_folders = ['.venv', 'venv']
+format = '[🐍 ${version}(\($virtualenv\))]($style) '
+style = 'bold yellow'
 
-[custom.venv_python]
-command = 'starship-python-version'
-when = 'git rev-parse --show-toplevel >/dev/null 2>&1'
-format = "via [🐍 $output]($style) "
-style = "bold yellow"
+[rust]
+detect_extensions = ['rs']
+detect_files = ['Cargo.toml']
+format = '[🦀 $version]($style) '
+style = 'bold red'
 
+[nodejs]
+detect_extensions = ['js', 'ts', 'mjs']
+detect_files = ['package.json', '.node-version']
+format = '[⬢ $version]($style) '
+style = 'bold green'
+
+[c]
+detect_extensions = ['c', 'h']
+format = '[C $version]($style) '
+style = 'bold blue'
+
+# ─────────────────────────────────────────────────────────────
+# CONTAINERS & INFRA
+# ─────────────────────────────────────────────────────────────
+
+[docker_context]
+detect_files = ['docker-compose.yml', 'docker-compose.yaml', 'Dockerfile', 'compose.yml']
+format = '[🐳 $context]($style) '
+style = 'bold blue'
+only_with_files = true
+
+[kubernetes]
+disabled = true  # Enable when needed: disabled = false
+
+# ─────────────────────────────────────────────────────────────
+# CUSTOM MODULES
+# ─────────────────────────────────────────────────────────────
+
+# Work vs personal indicator (adjust grep pattern to your work domain)
 [custom.gitmail]
-command = "git config user.email"
-when = "git status"
+command = "git config user.email | grep -qi 'astrazeneca\\|work' && echo '🏢' || echo '🏠'"
+when = "git rev-parse --is-inside-work-tree 2>/dev/null"
+format = '[$output]($style) '
+style = 'bold'
 
+# Disk space on right side - less intrusive
 [custom.disk_space]
-command = "df -h /System/Volumes/Data/ | awk 'NR==2 {print $5}'"
+command = "df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); if ($5 > 80) print \"⚠️\" $5 \"%\"; else print $5 \"%\"}'"
 when = "true"
-format = "💾 [$output]($style) "
-style = "bold green"
+format = '💾[$output]($style) '
+style = 'bold green'
+
+# ─────────────────────────────────────────────────────────────
+# RIGHT SIDE & TIME
+# ─────────────────────────────────────────────────────────────
+
+[time]
+disabled = false
+format = '[$time]($style) '
+style = 'dimmed white'
+time_format = '%H:%M'
+
+# ─────────────────────────────────────────────────────────────
+# DISABLED - available if needed
+# ─────────────────────────────────────────────────────────────
+
+[package]
+disabled = true  # Often slow, enable per-project if needed
+
+[aws]
+disabled = true  # Enable if you use AWS
+
+[gcloud]
+disabled = true  # Enable if you use GCP

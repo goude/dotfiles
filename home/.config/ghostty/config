@@ -46,4 +46,4 @@ quit-after-last-window-closed = false
 # Shader
 custom-shader = ~/.config/ghostty/shaders/crt-cursor.glsl
 custom-shader = ~/.config/ghostty/shaders/crt-monitor.glsl
-# custom-shader = ~/.config/ghostty/shaders/tint.glsl
+# custom-shader = ~/.config/ghostty/shaders/crt-tint.glsl
