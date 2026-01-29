@@ -13,7 +13,7 @@ function __yo_state_get
 end
 
 function __yo_state_set
-    echo $argv[2] > (__yo_state_dir)/$argv[1]
+    echo $argv[2] >(__yo_state_dir)/$argv[1]
 end
 
 function __yo_today
@@ -29,12 +29,12 @@ function __yo_check_hints
     # Deep nesting
     set -l rel_path (string replace -r "^$HOME" "" $PWD)
     set -l depth (string split "/" $rel_path | count)
-    test $depth -ge 5; and set -a hints "cdr gets you back to the top of the repo"
+    test $depth -ge 4; and set -a hints "cdr gets you back to the top of the repo"
 
     # THX o'clock (11:38)
     if test "$hhmm" = "11:38"
         set -l key "thx_$today"
-        if test "(__yo_state_get $key)" != "1"
+        if test "(__yo_state_get $key)" != 1
             set -a hints "It's THX o'clock 🔊"
             __yo_state_set $key 1
         end
@@ -42,9 +42,9 @@ function __yo_check_hints
 
     # Hourly chime
     set -l minute (date +%M)
-    if test "$minute" = "00"
+    if test "$minute" = 00
         set -l key "hour_{$hour}_{$today}"
-        if test "(__yo_state_get $key)" != "1"
+        if test "(__yo_state_get $key)" != 1
             set -a hints "It's $hour:00."
             __yo_state_set $key 1
         end
@@ -68,7 +68,7 @@ end
 
 function yo_hints --on-event fish_postexec
     set -l cmd (string split " " $argv)[1]
-    test "$cmd" = "yo"; and return
+    test "$cmd" = yo; and return
 
     set -q __yo_cmd_count; or set -g __yo_cmd_count 0
     set -g __yo_cmd_count (math $__yo_cmd_count + 1)
@@ -79,7 +79,7 @@ function yo_hints --on-event fish_postexec
 end
 
 function yo
-    if test "$argv[1]" = "--help" -o "$argv[1]" = "-h"
+    if test "$argv[1]" = --help -o "$argv[1]" = -h
         echo "yo - context-aware hints"
         echo ""
         echo "Usage:"

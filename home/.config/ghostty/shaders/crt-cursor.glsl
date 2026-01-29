@@ -8,30 +8,16 @@
 
 
 // Settings:
-// Minimum distance in UV coordinates before drawing trail
-// [0, sqrt(2)]
 #define TRAIL_MIN_DISTANCE 0.1
-// Use override colors when color channel brightness standard deviation is below threshold
-// [0, sqrt(2)/3]
 #define GLOW_COLOR_OVERRIDE_THRESHOLD 0.1
-// Override color for current cursor
-// [0, 1]^3
 #define GLOW_COLOR_OVERRIDE_CURRENT 0.2, 0.4, 1.0
-// Override color for previous cursor
-// [0, 1]^3
 #define GLOW_COLOR_OVERRIDE_PREVIOUS 0.4, 0.1, 1.0
-// Brightness offset for glow effect
-// [0, 1]
 #define GLOW_COLOR_OFFSET_BRIGHTNESS 0.5
-// Time slowdown factor for animations
-// x \in R : x > 0
 #define TIME_DURATION_FACTOR 1.0
-
 
 
 // Constants:
 #define EPS 1e-9
-
 
 
 // Functions:
@@ -66,7 +52,6 @@ float sdTriangle(vec2 p, vec2 a, vec2 b, vec2 c)
 }
 
 float sdTrail(vec2 p, vec2 currPos, vec2 currSize, vec2 prevPos, vec2 prevSize, float t) {
-    // Initialize points
     vec2 currWidth = vec2(currSize.x, 0.0), currHeight = vec2(0.0, -currSize.y);
     vec2 currTopLeft = currPos;
     vec2 currTopRight = currTopLeft + currWidth;
@@ -81,7 +66,6 @@ float sdTrail(vec2 p, vec2 currPos, vec2 currSize, vec2 prevPos, vec2 prevSize, 
     vec2 prevBottomRight = prevBottomLeft + prevWidth;
     vec2 prevCenter = (prevTopLeft + prevBottomRight) * 0.5;
 
-    // Check whether to only draw cursor
     bool nearbyPrev = distance(currCenter, prevCenter) < TRAIL_MIN_DISTANCE;
     bool insidePrev = (
         currCenter.x >= prevTopLeft.x && currCenter.x <= prevTopRight.x &&
@@ -93,7 +77,6 @@ float sdTrail(vec2 p, vec2 currPos, vec2 currSize, vec2 prevPos, vec2 prevSize, 
     if (nearbyPrev || insidePrev)
         return rectDist;
 
-    // Draw trail and cursor
     vec2[4] corners = { currTopLeft, currTopRight, currBottomRight, currBottomLeft };
     vec2 triB = corners[0], triC = corners[0], dir = normalize(currCenter - prevCenter);
     float minRel = 1/EPS, maxRel = -minRel;
@@ -109,16 +92,22 @@ float sdTrail(vec2 p, vec2 currPos, vec2 currSize, vec2 prevPos, vec2 prevSize, 
     }
 
     float triDist = max(sdTriangle(p, prevCenter, triB, triC), 0.0);
-
-
     return min(rectDist, mix(triDist, rectDist, t));
 }
 
 vec4 colorOverride(vec4 baseColor, vec4 overrideColor) {
-    if (sqrt(pow(distance(baseColor.rgb, vec3(dot(baseColor.rgb, vec3(1.0)) / 3.0)), 2) / 3.0) < GLOW_COLOR_OVERRIDE_THRESHOLD)
+    if (sqrt(pow(distance(baseColor.rgb, vec3(dot(baseColor.rgb, vec3(1.0)) / 3.0)), 2) / 3.0)
+        < GLOW_COLOR_OVERRIDE_THRESHOLD)
         return overrideColor;
     else
         return baseColor;
+}
+
+// ---- extra helper (safe) ----
+float hash21(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 78.233);
+    return fract(p.x * p.y);
 }
 
 
@@ -137,21 +126,50 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     float tShape = 1.0 - pow(1.0 - clamp((iTime - iTimeCursorChange) / TIME_DURATION_FACTOR, 0.0, 1.0), 3);
     float tVisible = exp(-(iTime - iTimeCursorChange) / TIME_DURATION_FACTOR * 50.0);
-    
+
     float dTrail = sdTrail(uv, currPos, currSize, prevPos, prevSize, tShape);
     float dTip = nearbyPrev ? 0.0 : clamp(1.0 - abs(dSeg - 1.0), 0.0, 1.0);
 
     vec4 currColor = colorOverride(iCurrentCursorColor, vec4(GLOW_COLOR_OVERRIDE_CURRENT, 1.0));
     vec4 prevColor = colorOverride(iPreviousCursorColor, vec4(GLOW_COLOR_OVERRIDE_PREVIOUS, 1.0));
-    vec4 glowColor = mix(fragColor, mix(prevColor, currColor, dTip) + GLOW_COLOR_OFFSET_BRIGHTNESS, pow(dTip, 3));
+
+    vec4 glowColor = mix(
+        fragColor,
+        mix(prevColor, currColor, dTip) + GLOW_COLOR_OFFSET_BRIGHTNESS,
+        pow(dTip, 3)
+    );
+
     glowColor = mix(glowColor, fragColor, pow(smoothstep(0.0, 0.3, dTrail), 0.1));
 
     vec4 trailColor = mix(vec4(1.0), glowColor, pow(smoothstep(0.0, 0.01, dTrail), 0.2));
     vec4 trail = mix(trailColor, fragColor, pow(smoothstep(0.0, nearbyPrev ? 0.01 : 0.1, dTrail), 0.2));
+
     if (!nearbyPrev) {
         trail = mix(trailColor, trail, pow(smoothstep(0.0, 6.0, dTip), 0.05));
         trail = mix(trailColor, trail, pow(smoothstep(0.0, 8.0, dTip), 0.005));
     }
 
-    fragColor = mix(fragColor, trail, tVisible);
+    // ===== enhancements start here =====
+
+    // soft outer bloom
+    float bloomRadius = 0.15 + dCenter * 0.6;
+    float bloom = pow(smoothstep(bloomRadius, 0.0, dTrail), 2.0);
+    vec4 softBloom = glowColor * bloom * 0.6;
+
+    // motion-gated spark particles
+    float speed = clamp(dCenter * 8.0, 0.0, 1.0);
+    float nearTrail = smoothstep(0.02, 0.0, dTrail);
+    float rnd = hash21(uv * iResolution.xy + floor(iTime * 60.0));
+    float spark = step(0.985, rnd) * nearTrail * speed;
+    spark *= 0.6 + 0.4 * sin(iTime * 40.0);
+
+    vec4 sparkColor = mix(prevColor, currColor, dTip) + 0.8;
+
+    // subtle CRT energy shimmer
+    float shimmer = 0.96 + 0.04 * sin(iTime * 25.0 + uv.y * iResolution.y * 0.1);
+
+    vec4 enhanced = trail + softBloom + spark * sparkColor;
+    enhanced.rgb *= shimmer;
+
+    fragColor = mix(fragColor, enhanced, tVisible);
 }
