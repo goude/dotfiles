@@ -403,6 +403,12 @@ do_paste() {
   local network=$1 enc=$2 copy_local=$3 output_file="${4:-}"
   local raw out
 
+  # Resolve symlink if output_file is one
+  local resolved_file=""
+  if [[ -n "$output_file" && -L "$output_file" ]]; then
+    resolved_file=$(readlink -f "$output_file")
+  fi
+
   if ((network)); then
     raw=$(kv_fetch) || exit 1
     printf "📋 %s✓ Fetched%s from %scloud clipboard%s\n" \
@@ -439,9 +445,17 @@ do_paste() {
   ((copy_local)) && printf "%s" "$out" | copy_to_clipboard
 
   if [[ -n "$output_file" ]]; then
-    printf "%s" "$out" >"$output_file"
-    printf "📋 %s✓ Written%s → %s%s%s %s│%s %s\n" \
-      "$C_MINT" "$C_RESET" "$C_SKY" "$output_file" "$C_RESET" "$C_DIM" "$C_RESET" "$(content_stats "$out")" >&2
+    local target="${resolved_file:-$output_file}"
+    printf "%s" "$out" >"$target"
+    if [[ -n "$resolved_file" ]]; then
+      printf "📋 %s✓ Written%s → %s%s%s %s→%s %s%s%s %s│%s %s\n" \
+        "$C_MINT" "$C_RESET" "$C_SKY" "$output_file" "$C_RESET" \
+        "$C_DIM" "$C_RESET" "$C_SKY" "$resolved_file" "$C_RESET" \
+        "$C_DIM" "$C_RESET" "$(content_stats "$out")" >&2
+    else
+      printf "📋 %s✓ Written%s → %s%s%s %s│%s %s\n" \
+        "$C_MINT" "$C_RESET" "$C_SKY" "$output_file" "$C_RESET" "$C_DIM" "$C_RESET" "$(content_stats "$out")" >&2
+    fi
   else
     printf "%s" "$out"
   fi

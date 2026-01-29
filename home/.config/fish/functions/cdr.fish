@@ -5,4 +5,5 @@ function cdr
         return 1
     end
     cd $root
+    ls
 end
