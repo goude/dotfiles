@@ -35,7 +35,7 @@ style = 'bold cyan'
 [character]
 success_symbol = '[❯](bold green)'
 error_symbol = '[❯](bold red)'
-vimcmd_symbol = '[❮](bold yellow)'  # Visual indicator for vim mode
+vimcmd_symbol = '[❮](bold yellow)' # Visual indicator for vim mode
 
 [cmd_duration]
 min_time = 2_000
@@ -76,7 +76,13 @@ deleted = '✘${count}'
 [python]
 python_binary = ['python3', 'python']
 detect_extensions = ['py']
-detect_files = ['pyproject.toml', 'setup.py', 'requirements.txt', '.python-version', 'Pipfile']
+detect_files = [
+  'pyproject.toml',
+  'setup.py',
+  'requirements.txt',
+  '.python-version',
+  'Pipfile',
+]
 detect_folders = ['.venv', 'venv']
 format = '[🐍 ${version}(\($virtualenv\))]($style) '
 style = 'bold yellow'
@@ -103,13 +109,18 @@ style = 'bold blue'
 # ─────────────────────────────────────────────────────────────
 
 [docker_context]
-detect_files = ['docker-compose.yml', 'docker-compose.yaml', 'Dockerfile', 'compose.yml']
+detect_files = [
+  'docker-compose.yml',
+  'docker-compose.yaml',
+  'Dockerfile',
+  'compose.yml',
+]
 format = '[🐳 $context]($style) '
 style = 'bold blue'
 only_with_files = true
 
 [kubernetes]
-disabled = true  # Enable when needed: disabled = false
+disabled = true # Enable when needed: disabled = false
 
 # ─────────────────────────────────────────────────────────────
 # CUSTOM MODULES
@@ -124,7 +135,7 @@ style = 'bold'
 
 # Disk space on right side - less intrusive
 [custom.disk_space]
-command = "df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); if ($5 > 80) print \"⚠️\" $5 \"%\"; else print $5 \"%\"}'"
+command = "df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); if ($5 > 90) print \"⚠️\" $5 \"%\"; else print $5 \"%\"}'"
 when = "true"
 format = '💾[$output]($style) '
 style = 'bold green'
@@ -144,10 +155,11 @@ time_format = '%H:%M'
 # ─────────────────────────────────────────────────────────────
 
 [package]
-disabled = true  # Often slow, enable per-project if needed
+disabled = true # Often slow, enable per-project if needed
 
 [aws]
-disabled = true  # Enable if you use AWS
+disabled = true # Enable if you use AWS
 
 [gcloud]
-disabled = true  # Enable if you use GCP
+disabled = true # Enable if you use GCP
+
