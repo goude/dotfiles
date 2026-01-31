@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# chk — small, extensible repo checker (starts with Justfile checks)
+# chk — small, extensible repo checker
 set -euo pipefail
 
 PROG="chk"
-VERSION="0.1.0"
+VERSION="0.2.0"
 
 usage() {
   cat <<'EOF'
@@ -17,18 +17,19 @@ Options:
   -q, --quiet    Only print failures + summary
   --version      Print version and exit
 
-What it checks (currently):
-  - justfile exists in current directory
-  - justfile defines tasks: dev, fmt
+Behavior:
+  - Checks are only run when applicable
+  - Missing optional files (e.g. justfile) do NOT fail
+  - Exit code is non-zero only if an applicable check fails
+
+Current checks:
+  - If a justfile exists:
+      - it must define tasks: dev, fmt
 
 Exit codes:
-  0  all checks passed (or no checks applicable but nothing failed)
-  1  one or more checks failed
+  0  all applicable checks passed
+  1  one or more applicable checks failed
   2  usage / argument error
-
-Examples:
-  chk
-  chk --quiet
 EOF
 }
 
@@ -44,98 +45,61 @@ while (( $# > 0 )); do
   esac
 done
 
-# --- reporting framework
+# --- reporting
 PASS=0
 FAIL=0
 SKIP=0
 TOTAL=0
-REPORT_LINES=()
+REPORT=()
 
-_emit() { # name emoji message
-  local emoji="$1"; shift
-  local msg="$1"; shift || true
-  REPORT_LINES+=("$emoji $msg")
-}
-
-_ok()   { ((PASS++));  ((TOTAL++)); _emit "✅" "$1"; }
-_fail() { ((FAIL++));  ((TOTAL++)); _emit "❌" "$1"; }
-_skip() { ((SKIP++));  ((TOTAL++)); _emit "⏭️" "$1"; }
+_emit() { REPORT+=("$1 $2"); }
+_ok()   { ((PASS++)); ((TOTAL++)); _emit "✅" "$1"; }
+_fail() { ((FAIL++)); ((TOTAL++)); _emit "❌" "$1"; }
+_skip() { ((SKIP++)); ((TOTAL++)); _emit "⏭️" "$1"; }
 
 run_check() { # label command...
   local label="$1"; shift
   if "$@"; then
     _ok "$label"
-    return 0
   else
     _fail "$label"
-    return 1
   fi
 }
 
-run_check_if() { # predicate label command...
-  local predicate="$1"; shift
-  local label="$1"; shift
-  if ! "$predicate"; then
-    _skip "$label (not applicable)"
-    return 0
-  fi
-  run_check "$label" "$@"
-}
-
-# --- checks
-has_justfile() { [[ -f "justfile" ]]; }
+# --- helpers
+has_justfile() { [[ -f justfile ]]; }
 
 justfile_has_task() {
   local task="$1"
-  # Match recipe headers like:
-  #   dev:
-  #   dev arg:
-  # Leading whitespace is allowed.
-  grep -Eq "^[[:space:]]*${task}([[:space:]]|:)" "justfile"
+  grep -Eq "^[[:space:]]*${task}([[:space:]]|:)" justfile
 }
 
 # --- run
 echo "🔎 $PROG: running in $(pwd)"
 
-# This ensures you see output even if you later add gating that results in no checks
-# (also nice in CI logs).
-_checked_something=0
-
-run_check "justfile exists" has_justfile || true
-_checked_something=1
-
-# Only run task checks if justfile exists; otherwise skip them (but still show that we ran).
+# ---- Justfile checks (conditional)
 if has_justfile; then
-  run_check "justfile has task: dev" justfile_has_task dev || true
-  run_check "justfile has task: fmt" justfile_has_task fmt || true
-  _checked_something=1
+  run_check "justfile has task: dev" justfile_has_task dev
+  run_check "justfile has task: fmt" justfile_has_task fmt
 else
-  _skip "justfile has task: dev (no justfile)"
-  _skip "justfile has task: fmt (no justfile)"
-  _checked_something=1
+  _skip "justfile checks (no justfile present)"
 fi
 
 # --- report
 if (( QUIET == 0 )); then
   echo "chk results:"
-  for line in "${REPORT_LINES[@]}"; do
+  for line in "${REPORT[@]}"; do
     echo "  $line"
   done
 else
-  # quiet: only failures + summary
   echo "chk results (failures only):"
-  for line in "${REPORT_LINES[@]}"; do
+  for line in "${REPORT[@]}"; do
     [[ "$line" == "❌ "* ]] && echo "  $line"
   done
 fi
 
 echo
 echo "Summary: ✅ $PASS passed, ❌ $FAIL failed, ⏭️ $SKIP skipped (total: $TOTAL)"
-
-# Even if somehow no checks were executed in the future, still be explicit.
-if (( TOTAL == 0 )); then
-  echo "ℹ️  No checks were executed."
-fi
 
 if (( FAIL > 0 )); then
   exit 1
