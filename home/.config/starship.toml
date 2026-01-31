@@ -128,16 +128,16 @@ disabled = true # Enable when needed: disabled = false
 
 # Work vs personal indicator (adjust grep pattern to your work domain)
 [custom.gitmail]
-command = "git config user.email | grep -qi 'astrazeneca\\|work' && echo '🏢' || echo '🏠'"
+command = "git config user.email | grep -qi 'astrazeneca\\|work' && echo '💊' || echo '🏴‍☠️'"
 when = "git rev-parse --is-inside-work-tree 2>/dev/null"
 format = '[$output]($style) '
 style = 'bold'
 
 # Disk space on right side - less intrusive
 [custom.disk_space]
-command = "df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); if ($5 > 90) print \"⚠️\" $5 \"%\"; else print $5 \"%\"}'"
-when = "true"
-format = '💾[$output]($style) '
+command = "df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); if ($5 > 90) print \"⚠️ \" $5 \"%\"; else print \"💾 \" $5 \"%\"}'"
+when = "df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); exit !($5 > 85)}'"
+format = ' [$output]($style) '
 style = 'bold green'
 
 # ─────────────────────────────────────────────────────────────
@@ -162,4 +162,3 @@ disabled = true # Enable if you use AWS
 
 [gcloud]
 disabled = true # Enable if you use GCP
-

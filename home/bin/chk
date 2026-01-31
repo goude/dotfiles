@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PASS=0
+FAIL=0
+REPORT=()
+
+ok() {
+  REPORT+=("✅ $1")
+  ((PASS++))
+}
+
+fail() {
+  REPORT+=("❌ $1")
+  ((FAIL++))
+}
+
+check() {
+  local name="$1"
+  shift
+  if "$@"; then
+    ok "$name"
+  else
+    fail "$name"
+  fi
+}
+
+# -------------------------------------------------
+# Checks
+# -------------------------------------------------
+
+has_justfile() {
+  [[ -f justfile ]]
+}
+
+justfile_has_task() {
+  local task="$1"
+  grep -Eq "^[[:space:]]*$task([[:space:]]|:)" justfile
+}
+
+check "justfile exists" has_justfile
+
+if [[ -f justfile ]]; then
+  check "justfile has task: dev" justfile_has_task dev
+  check "justfile has task: fmt" justfile_has_task fmt
+fi
+
+# -------------------------------------------------
+# Report
+# -------------------------------------------------
+
+echo "chk results:"
+for line in "${REPORT[@]}"; do
+  echo "  $line"
+done
+
+echo
+echo "Summary: ✅ $PASS passed, ❌ $FAIL failed"
+
+if (( FAIL > 0 )); then
+  exit 1
+fi
