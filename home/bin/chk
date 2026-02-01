@@ -24,7 +24,7 @@ Behavior:
 
 Current checks:
   - If a justfile exists:
-      - it must define tasks: dev, fmt
+      - it must define tasks: dev, format
 
 Exit codes:
   0  all applicable checks passed
@@ -36,12 +36,25 @@ EOF
 QUIET=0
 
 # --- arg parsing
-while (( $# > 0 )); do
+while (($# > 0)); do
   case "$1" in
-    -h|--help) usage; exit 0 ;;
-    -q|--quiet) QUIET=1; shift ;;
-    --version) echo "$PROG $VERSION"; exit 0 ;;
-    *) echo "chk: unknown option: $1" >&2; echo "Try: chk --help" >&2; exit 2 ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  -q | --quiet)
+    QUIET=1
+    shift
+    ;;
+  --version)
+    echo "$PROG $VERSION"
+    exit 0
+    ;;
+  *)
+    echo "chk: unknown option: $1" >&2
+    echo "Try: chk --help" >&2
+    exit 2
+    ;;
   esac
 done
 
@@ -53,12 +66,25 @@ TOTAL=0
 REPORT=()
 
 _emit() { REPORT+=("$1 $2"); }
-_ok()   { ((PASS++)); ((TOTAL++)); _emit "✅" "$1"; }
-_fail() { ((FAIL++)); ((TOTAL++)); _emit "❌" "$1"; }
-_skip() { ((SKIP++)); ((TOTAL++)); _emit "⏭️" "$1"; }
+_ok() {
+  ((PASS++))
+  ((TOTAL++))
+  _emit "✅" "$1"
+}
+_fail() {
+  ((FAIL++))
+  ((TOTAL++))
+  _emit "❌" "$1"
+}
+_skip() {
+  ((SKIP++))
+  ((TOTAL++))
+  _emit "⏭️" "$1"
+}
 
 run_check() { # label command...
-  local label="$1"; shift
+  local label="$1"
+  shift
   if "$@"; then
     _ok "$label"
   else
@@ -80,13 +106,13 @@ echo "🔎 $PROG: running in $(pwd)"
 # ---- Justfile checks (conditional)
 if has_justfile; then
   run_check "justfile has task: dev" justfile_has_task dev
-  run_check "justfile has task: fmt" justfile_has_task fmt
+  run_check "justfile has task: format" justfile_has_task format
 else
   _skip "justfile checks (no justfile present)"
 fi
 
 # --- report
-if (( QUIET == 0 )); then
+if ((QUIET == 0)); then
   echo "chk results:"
   for line in "${REPORT[@]}"; do
     echo "  $line"
@@ -101,7 +127,7 @@ fi
 echo
 echo "Summary: ✅ $PASS passed, ❌ $FAIL failed, ⏭️ $SKIP skipped (total: $TOTAL)"
 
-if (( FAIL > 0 )); then
+if ((FAIL > 0)); then
   exit 1
 fi
 exit 0
