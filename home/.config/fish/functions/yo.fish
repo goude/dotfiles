@@ -1,6 +1,9 @@
 # ~/.config/fish/functions/yo.fish
+# Context-aware micro-hints for Fish shell
 
-# State stored in ~/.local/state/yo/
+# ------------------------------------------------------------
+# State handling (stored in ~/.local/state/yo/)
+# ------------------------------------------------------------
 function __yo_state_dir
     set -l dir ~/.local/state/yo
     test -d $dir; or mkdir -p $dir
@@ -13,25 +16,55 @@ function __yo_state_get
 end
 
 function __yo_state_set
-    echo $argv[2] >(__yo_state_dir)/$argv[1]
+    echo $argv[2] > (__yo_state_dir)/$argv[1]
 end
 
+# ------------------------------------------------------------
+# Time helpers
+# ------------------------------------------------------------
 function __yo_today
     date +%Y-%m-%d
 end
 
+# ------------------------------------------------------------
+# Context helpers
+# ------------------------------------------------------------
+function __yo_git_root
+    command git rev-parse --show-toplevel 2>/dev/null
+end
+
+function __yo_is_git_root
+    set -l root (__yo_git_root)
+    test -n "$root"; and test "$PWD" = "$root"
+end
+
+# ------------------------------------------------------------
+# Hint logic
+# ------------------------------------------------------------
 function __yo_check_hints
     set -l hints
     set -l today (__yo_today)
     set -l hour (date +%H)
+    set -l minute (date +%M)
     set -l hhmm (date +%H:%M)
 
-    # Deep nesting
+    # --- Deep nesting hint ---
     set -l rel_path (string replace -r "^$HOME" "" $PWD)
     set -l depth (string split "/" $rel_path | count)
-    test $depth -ge 4; and set -a hints "cdr gets you back to the top of the repo"
+    if test $depth -ge 4
+        set -a hints "cdr gets you back to the top of the repo"
+    end
 
-    # THX o'clock (11:38)
+    # --- Git repo root hint ---
+    if __yo_is_git_root
+        set -l key "gitroot_$today"
+        if test "(__yo_state_get $key)" != 1
+            set -a hints "the chk command will give helpful advice"
+            __yo_state_set $key 1
+        end
+    end
+
+    # --- THX o'clock (11:38) ---
     if test "$hhmm" = "11:38"
         set -l key "thx_$today"
         if test "(__yo_state_get $key)" != 1
@@ -40,8 +73,7 @@ function __yo_check_hints
         end
     end
 
-    # Hourly chime
-    set -l minute (date +%M)
+    # --- Hourly chime ---
     if test "$minute" = 00
         set -l key "hour_{$hour}_{$today}"
         if test "(__yo_state_get $key)" != 1
@@ -53,6 +85,9 @@ function __yo_check_hints
     string join \n $hints
 end
 
+# ------------------------------------------------------------
+# Rendering
+# ------------------------------------------------------------
 function __yo_show_hints
     set -l hints (__yo_check_hints)
     if test -n "$hints"
@@ -66,6 +101,9 @@ function __yo_show_hints
     return 1
 end
 
+# ------------------------------------------------------------
+# Passive trigger: every 10 commands
+# ------------------------------------------------------------
 function yo_hints --on-event fish_postexec
     set -l cmd (string split " " $argv)[1]
     test "$cmd" = yo; and return
@@ -78,6 +116,9 @@ function yo_hints --on-event fish_postexec
     end
 end
 
+# ------------------------------------------------------------
+# Manual invocation
+# ------------------------------------------------------------
 function yo
     if test "$argv[1]" = --help -o "$argv[1]" = -h
         echo "yo - context-aware hints"
