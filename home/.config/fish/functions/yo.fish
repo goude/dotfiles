@@ -1,140 +1,111 @@
 # ~/.config/fish/functions/yo.fish
 # Context-aware micro-hints for Fish shell
 
-# ------------------------------------------------------------
-# State handling (stored in ~/.local/state/yo/)
-# ------------------------------------------------------------
+# ── State ──────────────────────────────────────────────────
 function __yo_state_dir
     set -l dir ~/.local/state/yo
     test -d $dir; or mkdir -p $dir
     echo $dir
 end
 
-function __yo_state_get
-    set -l file (__yo_state_dir)/$argv[1]
+function __yo_state_get -a key
+    set -l file (__yo_state_dir)/$key
     test -f $file; and cat $file
 end
 
-function __yo_state_set
-    echo $argv[2] > (__yo_state_dir)/$argv[1]
+function __yo_state_set -a key value
+    echo $value >(__yo_state_dir)/$key
 end
 
-# ------------------------------------------------------------
-# Time helpers
-# ------------------------------------------------------------
-function __yo_today
-    date +%Y-%m-%d
+function __yo_once_today -a key
+    set -l full_key "{$key}_"(date +%Y-%m-%d)
+    test "(__yo_state_get $full_key)" = 1; and return 1
+    __yo_state_set $full_key 1
 end
 
-# ------------------------------------------------------------
-# Context helpers
-# ------------------------------------------------------------
+# ── Context helpers ────────────────────────────────────────
 function __yo_git_root
     command git rev-parse --show-toplevel 2>/dev/null
 end
 
 function __yo_is_git_root
     set -l root (__yo_git_root)
-    test -n "$root"; and test "$PWD" = "$root"
+    test -n "$root" -a "$PWD" = "$root"
 end
 
-# ------------------------------------------------------------
-# Hint logic
-# ------------------------------------------------------------
-function __yo_check_hints
-    set -l hints
-    set -l today (__yo_today)
+function __yo_dir_depth
+    set -l rel (string replace -r "^$HOME" "" $PWD)
+    string split / $rel | count
+end
+
+# ── Hint definitions ───────────────────────────────────────
+# Each appends to __yo_hints if triggered. Add new hints as __yo_hint_* functions.
+
+function __yo_hint_deep_nesting
+    test (__yo_dir_depth) -ge 4; or return
+    set -a __yo_hints "cdr gets you back to the top of the repo"
+end
+
+function __yo_hint_git_root
+    __yo_is_git_root; or return
+    __yo_once_today gitroot; or return
+    set -a __yo_hints "chk gives helpful repo diagnostics"
+end
+
+function __yo_hint_thx_oclock
+    test (date +%H:%M) = "11:38"; or return
+    __yo_once_today thx; or return
+    set -a __yo_hints "It's THX o'clock 🔊"
+end
+
+function __yo_hint_hourly_chime
+    test (date +%M) = 00; or return
     set -l hour (date +%H)
-    set -l minute (date +%M)
-    set -l hhmm (date +%H:%M)
-
-    # --- Deep nesting hint ---
-    set -l rel_path (string replace -r "^$HOME" "" $PWD)
-    set -l depth (string split "/" $rel_path | count)
-    if test $depth -ge 4
-        set -a hints "cdr gets you back to the top of the repo"
-    end
-
-    # --- Git repo root hint ---
-    if __yo_is_git_root
-        set -l key "gitroot_$today"
-        if test "(__yo_state_get $key)" != 1
-            set -a hints "the chk command will give helpful advice"
-            __yo_state_set $key 1
-        end
-    end
-
-    # --- THX o'clock (11:38) ---
-    if test "$hhmm" = "11:38"
-        set -l key "thx_$today"
-        if test "(__yo_state_get $key)" != 1
-            set -a hints "It's THX o'clock 🔊"
-            __yo_state_set $key 1
-        end
-    end
-
-    # --- Hourly chime ---
-    if test "$minute" = 00
-        set -l key "hour_{$hour}_{$today}"
-        if test "(__yo_state_get $key)" != 1
-            set -a hints "It's $hour:00."
-            __yo_state_set $key 1
-        end
-    end
-
-    string join \n $hints
+    __yo_once_today "hour_$hour"; or return
+    set -a __yo_hints "It's $hour:00."
 end
 
-# ------------------------------------------------------------
-# Rendering
-# ------------------------------------------------------------
+# ── Hint runner ────────────────────────────────────────────
+function __yo_collect_hints
+    set -g __yo_hints
+    for fn in (functions -n | string match '__yo_hint_*')
+        $fn
+    end
+end
+
 function __yo_show_hints
-    set -l hints (__yo_check_hints)
-    if test -n "$hints"
-        for hint in $hints
-            set_color brblack
-            echo "💡 $hint"
-            set_color normal
-        end
-        return 0
-    end
-    return 1
+    __yo_collect_hints
+    test (count $__yo_hints) -gt 0; or return 1
+    set_color brblack
+    printf "💡 %s\n" $__yo_hints
+    set_color normal
 end
 
-# ------------------------------------------------------------
-# Passive trigger: every 10 commands
-# ------------------------------------------------------------
+# ── Triggers ───────────────────────────────────────────────
 function yo_hints --on-event fish_postexec
     set -l cmd (string split " " $argv)[1]
     test "$cmd" = yo; and return
-
     set -q __yo_cmd_count; or set -g __yo_cmd_count 0
     set -g __yo_cmd_count (math $__yo_cmd_count + 1)
-
-    if test (math $__yo_cmd_count % 10) -eq 0
-        __yo_show_hints
-    end
+    test (math $__yo_cmd_count % 10) -eq 0; and __yo_show_hints
 end
 
-# ------------------------------------------------------------
-# Manual invocation
-# ------------------------------------------------------------
 function yo
-    if test "$argv[1]" = --help -o "$argv[1]" = -h
-        echo "yo - context-aware hints"
-        echo ""
-        echo "Usage:"
-        echo "  yo        show relevant hints for current context"
-        echo "  yo --help show this help"
-        echo ""
-        echo "Hints also appear passively every 10 commands when relevant."
-        echo "State stored in ~/.local/state/yo/"
-        return
-    end
-
-    __yo_show_hints; or begin
-        set_color brblack
-        echo "🤷 no hints right now"
-        set_color normal
+    switch "$argv[1]"
+        case -h --help
+            echo "yo - context-aware hints"
+            echo
+            echo "Usage:"
+            echo "  yo        show relevant hints"
+            echo "  yo --help this help"
+            echo
+            echo "Hints fire passively every 10 commands."
+            echo "State: ~/.local/state/yo/"
+        case '*'
+            __yo_show_hints; or begin
+                set_color brblack
+                echo "🤷 no hints right now"
+                set_color normal
+            end
     end
 end
