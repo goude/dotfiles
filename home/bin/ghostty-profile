@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+set -eu
+
+PROFILE="${1:-default}"
+CFG="$HOME/.config/ghostty"
+OUT="$CFG/config"
+
+cat \
+  "$CFG/base.conf" \
+  "$CFG/overlays/$PROFILE.conf" \
+  >"$OUT"
+
+echo "ghostty config → $PROFILE"
