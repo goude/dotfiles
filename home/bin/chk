@@ -101,7 +101,7 @@ justfile_has_task() {
 }
 
 # --- run
-echo "🔎 $PROG: running in $(pwd)"
+#echo "🔎 $PROG: running in $(pwd)"
 
 # ---- Justfile checks (conditional)
 if has_justfile; then
