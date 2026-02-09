@@ -107,5 +107,8 @@ function yo
                 echo "🤷 no hints right now"
                 set_color normal
             end
+            # make this nicer
+            echo ""
+            chk
     end
 end
