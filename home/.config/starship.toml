@@ -74,17 +74,12 @@ deleted = '✘${count}'
 # ─────────────────────────────────────────────────────────────
 
 [python]
-python_binary = ['python3', 'python']
-detect_extensions = ['py']
-detect_files = [
-  'pyproject.toml',
-  'setup.py',
-  'requirements.txt',
-  '.python-version',
-  'Pipfile',
-]
-detect_folders = ['.venv', 'venv']
-format = '[🐍 ${version}(\($virtualenv\))]($style) '
+detect_folders = ['.venv']
+detect_files = ['pyproject.toml']
+
+python_binary = ['.venv/bin/python', 'python', 'python3']
+
+format = '[🐍 ${version}(${virtualenv})]($style) '
 style = 'bold yellow'
 
 [rust]
