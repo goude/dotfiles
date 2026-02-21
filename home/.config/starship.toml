@@ -130,8 +130,8 @@ style = 'bold'
 
 # Disk space on right side - less intrusive
 [custom.disk_space]
-command = "df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); if ($5 > 90) print \"⚠️ \" $5 \"%\"; else print \"💾 \" $5 \"%\"}'"
-when = "df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); exit !($5 > 85)}'"
+command = "df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); if ($5 > 95) print \"⚠️ \" $5 \"%\"; else print \"💾 \" $5 \"%\"}'"
+when = "df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); exit !($5 > 90)}'"
 format = ' [$output]($style) '
 style = 'bold green'
 
@@ -143,7 +143,7 @@ style = 'bold green'
 disabled = false
 format = '[$time]($style) '
 style = 'dimmed white'
-time_format = '%H:%M'
+time_format = 'W%V %a %d %H:%M'
 
 # ─────────────────────────────────────────────────────────────
 # DISABLED - available if needed
