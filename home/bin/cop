@@ -126,6 +126,7 @@ ${C_GOLD}Options:${C_RESET}
   ${C_SKY}-n${C_RESET}  --network    Sync via cloud clipboard service
   ${C_SKY}-e${C_RESET}  --encrypt    AES-256-CBC encrypt/decrypt (\$COP_SECRET)
   ${C_SKY}-c${C_RESET}  --copy       Also copy fetched data locally (with -n)
+  ${C_SKY}-s${C_RESET}  --stdout     Also emit copied payload to stdout
   ${C_SKY}-i${C_RESET}  --info       Show clipboard command info
   ${C_SKY}-h${C_RESET}  --help       Show this help
   ${C_SKY}  ${C_RESET}  --test       Run tests
@@ -142,6 +143,8 @@ ${C_GOLD}Examples:${C_RESET}
 
   ${C_DIM}cop -ne file.txt${C_RESET}        encrypt & sync to remote
   ${C_DIM}cop -pne${C_RESET}                decrypt & paste from remote
+
+  ${C_DIM}ls | cop -s${C_RESET}             copy and also print what was copied
 
 ${C_DIM}Around the survivors, a perimeter create!${C_RESET}
 EOF
@@ -256,7 +259,7 @@ kv_send() {
     return 1
   }
   printf "📋 %s✓ Synced%s to %scloud clipboard%s\n" \
-    "$C_MINT" "$C_RESET" "$C_SKY" "$C_RESET" >&2
+    "$C_MINT" "$C_RESET" >&2
 }
 
 kv_fetch() {
@@ -462,8 +465,12 @@ do_paste() {
 }
 
 do_copy() {
-  local network=$1 enc=$2 copy_local=$3 payload="$4"
+  local network=$1 enc=$2 copy_local=$3 stdout_flag=$4 payload="$5"
   local to_send net_payload
+
+  if ((stdout_flag)); then
+    printf "%s" "$payload"
+  fi
 
   if ((enc)); then
     ensure_openssl || return 1
@@ -520,6 +527,7 @@ cop_run_tests() {
       if [[ "$got" == "$expect" ]]; then
         printf 'ASSERT NE FAIL: %s\n' "$msg" >&2
         printf '  got: [%s]\n' "$got" >&2
+        printf '  expect: [%s]\n' "$expect" >&2
         exit 1
       fi
     }
@@ -610,7 +618,7 @@ cop_run_tests() {
 
 # --- Entry Point -------------------------------------------------------------
 main() {
-  local paste=0 network=0 enc=0 copy_flag=0 info_flag=0
+  local paste=0 network=0 enc=0 copy_flag=0 info_flag=0 stdout_flag=0
 
   # Symlink detection
   [[ "$(basename "$0")" == "pas" ]] && paste=1
@@ -634,6 +642,7 @@ main() {
     --network) network=1 ;;
     --encrypt) enc=1 ;;
     --copy) copy_flag=1 ;;
+    --stdout) stdout_flag=1 ;;
     --)
       shift
       break
@@ -650,6 +659,7 @@ main() {
         n) network=1 ;;
         e) enc=1 ;;
         c) copy_flag=1 ;;
+        s) stdout_flag=1 ;;
         *)
           log "Unknown: -${1:i:1}"
           show_usage
@@ -697,7 +707,7 @@ main() {
     exit 1
   fi
 
-  do_copy "$network" "$enc" "$copy_local" "$payload"
+  do_copy "$network" "$enc" "$copy_local" "$stdout_flag" "$payload"
 }
 
 main "$@"
