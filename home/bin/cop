@@ -127,6 +127,7 @@ ${C_GOLD}Options:${C_RESET}
   ${C_SKY}-e${C_RESET}  --encrypt    AES-256-CBC encrypt/decrypt (\$COP_SECRET)
   ${C_SKY}-c${C_RESET}  --copy       Also copy fetched data locally (with -n)
   ${C_SKY}-t${C_RESET}  --tee        Also emit copied payload to stdout
+  ${C_SKY}-a${C_RESET}  --append     Append new content to existing clipboard contents
   ${C_SKY}-i${C_RESET}  --info       Show clipboard command info
   ${C_SKY}-h${C_RESET}  --help       Show this help
   ${C_SKY}  ${C_RESET}  --test       Run tests
@@ -143,6 +144,9 @@ ${C_GOLD}Examples:${C_RESET}
 
   ${C_DIM}cop -ne file.txt${C_RESET}        encrypt & sync to remote
   ${C_DIM}cop -pne${C_RESET}                decrypt & paste from remote
+
+  ${C_DIM}echo "more" | cop -a${C_RESET}    append to existing clipboard
+  ${C_DIM}cop -a file.txt${C_RESET}         append file to existing clipboard
 
   ${C_DIM}ls | cop -s${C_RESET}             copy and also print what was copied
 
@@ -465,8 +469,15 @@ do_paste() {
 }
 
 do_copy() {
-  local network=$1 enc=$2 copy_local=$3 stdout_flag=$4 payload="$5"
+  local network=$1 enc=$2 copy_local=$3 stdout_flag=$4 append=$5 payload="$6"
   local to_send net_payload
+
+  # Append mode: prepend existing local clipboard contents
+  if ((append)); then
+    local existing
+    existing=$(get_local_clipboard 2>/dev/null || true)
+    payload="${existing}${payload}"
+  fi
 
   if ((stdout_flag)); then
     printf "%s" "$payload"
@@ -612,13 +623,20 @@ cop_run_tests() {
     out="$("$COP_BIN" -p)"
     assert_eq "cop -p after concatenation" "$out" "$expect_concat"
 
+    # 8) append mode
+    "$COP_BIN" FILE
+    "$COP_BIN" -a FILE2
+    expect_append="${f1}${f2}"
+    out="$("$COP_BIN" -p)"
+    assert_eq "cop -p after append" "$out" "$expect_append"
+
     echo "All cop self tests passed."
   )
 }
 
 # --- Entry Point -------------------------------------------------------------
 main() {
-  local paste=0 network=0 enc=0 copy_flag=0 info_flag=0 stdout_flag=0
+  local paste=0 network=0 enc=0 copy_flag=0 info_flag=0 stdout_flag=0 append=0
 
   # Symlink detection
   [[ "$(basename "$0")" == "pas" ]] && paste=1
@@ -643,6 +661,7 @@ main() {
     --encrypt) enc=1 ;;
     --copy) copy_flag=1 ;;
     --tee) stdout_flag=1 ;;
+    --append) append=1 ;;
     --)
       shift
       break
@@ -660,6 +679,7 @@ main() {
         e) enc=1 ;;
         c) copy_flag=1 ;;
         t) stdout_flag=1 ;;
+        a) append=1 ;;
         *)
           log "Unknown: -${1:i:1}"
           show_usage
@@ -707,7 +727,7 @@ main() {
     exit 1
   fi
 
-  do_copy "$network" "$enc" "$copy_local" "$stdout_flag" "$payload"
+  do_copy "$network" "$enc" "$copy_local" "$stdout_flag" "$append" "$payload"
 }
 
 main "$@"
