@@ -12,7 +12,6 @@ if status --is-interactive
 
     source $HOMESHICK_REPOS/dotfiles/aliases
 
-    afs_stuff
     load_em
 end
 
