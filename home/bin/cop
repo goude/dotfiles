@@ -126,7 +126,7 @@ ${C_GOLD}Options:${C_RESET}
   ${C_SKY}-n${C_RESET}  --network    Sync via cloud clipboard service
   ${C_SKY}-e${C_RESET}  --encrypt    AES-256-CBC encrypt/decrypt (\$COP_SECRET)
   ${C_SKY}-c${C_RESET}  --copy       Also copy fetched data locally (with -n)
-  ${C_SKY}-s${C_RESET}  --stdout     Also emit copied payload to stdout
+  ${C_SKY}-t${C_RESET}  --tee        Also emit copied payload to stdout
   ${C_SKY}-i${C_RESET}  --info       Show clipboard command info
   ${C_SKY}-h${C_RESET}  --help       Show this help
   ${C_SKY}  ${C_RESET}  --test       Run tests
@@ -642,7 +642,7 @@ main() {
     --network) network=1 ;;
     --encrypt) enc=1 ;;
     --copy) copy_flag=1 ;;
-    --stdout) stdout_flag=1 ;;
+    --tee) stdout_flag=1 ;;
     --)
       shift
       break
@@ -659,7 +659,7 @@ main() {
         n) network=1 ;;
         e) enc=1 ;;
         c) copy_flag=1 ;;
-        s) stdout_flag=1 ;;
+        t) stdout_flag=1 ;;
         *)
           log "Unknown: -${1:i:1}"
           show_usage
