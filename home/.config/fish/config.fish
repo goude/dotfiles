@@ -1,18 +1,43 @@
-set -x HOMESHICK_REPOS $HOME/.homesick/repos
+# ---------- Early exits / guards ----------
 
-if status --is-interactive
-    fish_vi_key_bindings
-    #theme_gruvbox dark medium
+# Only interactive shells should run UI / prompt / tool init
+status --is-interactive; or return
 
-    #starship init fish | source
-    starship init fish --print-full-init | sed 's/"$(commandline)"/(commandline | string collect)/' | source
+# ---------- Environment ----------
 
-    source $HOMESHICK_REPOS/homeshick/homeshick.fish
-    source $HOMESHICK_REPOS/homeshick/completions/homeshick.fish
+set -gx HOMESHICK_REPOS $HOME/.homesick/repos
 
-    source $HOMESHICK_REPOS/dotfiles/aliases
+# ---------- Keybindings ----------
 
+fish_vi_key_bindings
+# theme_gruvbox dark medium
+
+# ---------- Prompt ----------
+
+if type -q starship
+    starship init fish --print-full-init \
+        | sed 's/"$(commandline)"/(commandline | string collect)/' \
+        | source
+end
+
+# ---------- Homeshick ----------
+
+if test -d $HOMESHICK_REPOS
+    source $HOMESHICK_REPOS/homeshick/homeshick.fish 2>/dev/null
+    source $HOMESHICK_REPOS/homeshick/completions/homeshick.fish 2>/dev/null
+    source $HOMESHICK_REPOS/dotfiles/aliases 2>/dev/null
+end
+
+# ---------- Custom ----------
+
+if functions -q load_em
     load_em
 end
 
-#set -g fish_user_paths /usr/local/opt/openjdk/bin $fish_user_paths
+# ---------- Homebrew ----------
+# Homebrew (only if present)
+if test -x /opt/homebrew/bin/brew
+    /opt/homebrew/bin/brew shellenv | source
+end
+
+# set -g fish_user_paths /usr/local/opt/openjdk/bin $fish_user_paths

@@ -11,21 +11,31 @@ layout {
     tab name="api" split_direction="vertical" {
         pane size="67%" {
             command "fish"
-            args "-l" "-C" "z repo api; and source .env.local"
+            args "-l" "-C" "z repo man api; and source .env.local"
         }
         pane size="33%" {
             command "fish"
-            args "-l" "-C" "z repo api; and source .env.local; and just dev"
+            args "-l" "-C" "z repo man api; and source .env.local; and just dev"
         }
     }
     tab name="ui" split_direction="vertical" {
         pane size="67%" {
             command "fish"
-            args "-l" "-C" "z repo ui; and gs"
+            args "-l" "-C" "z repo man ui; and gs"
         }
         pane size="33%" {
             command "fish"
-            args "-l" "-C" "z repo ui; and just dev"
+            args "-l" "-C" "z repo man ui; and just dev"
+        }
+    }
+    tab name="go" split_direction="vertical" {
+        pane size="67%" {
+            command "fish"
+            args "-l" "-C" "z go de; cdr and gs"
+        }
+        pane size="33%" {
+            command "fish"
+            args "-l" "-C" "z go de; cdr and just dev"
         }
     }
 }
