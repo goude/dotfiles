@@ -130,6 +130,7 @@ ${C_GOLD}Options:${C_RESET}
   ${C_SKY}-a${C_RESET}  --append     Append new content to existing clipboard contents
   ${C_SKY}-i${C_RESET}  --info       Show clipboard command info
   ${C_SKY}-h${C_RESET}  --help       Show this help
+  ${C_SKY}  ${C_RESET}  --notes      Open (or create) NOTES.md in current directory
   ${C_SKY}  ${C_RESET}  --test       Run tests
   ${C_SKY}  ${C_RESET}  --completions SHELL  Emit shell completions (fish supported)
 
@@ -150,6 +151,9 @@ ${C_GOLD}Examples:${C_RESET}
   ${C_DIM}cop -a file.txt${C_RESET}         append file to existing clipboard
 
   ${C_DIM}ls | cop -s${C_RESET}             copy and also print what was copied
+
+  ${C_DIM}cop --notes${C_RESET}             open/create NOTES.md here
+  ${C_DIM}notes${C_RESET}                   same (notes is a symlink to cop)
 
 ${C_DIM}Around the survivors, a perimeter create!${C_RESET}
 EOF
@@ -172,6 +176,7 @@ complete -c cop -s c -l copy     -d 'Also copy fetched data locally (with -n)'
 complete -c cop -s t -l tee      -d 'Also emit copied payload to stdout'
 complete -c cop -s a -l append   -d 'Append to existing clipboard contents'
 complete -c cop -s i -l info     -d 'Show clipboard command info'
+complete -c cop      -l notes    -d 'Open or create NOTES.md in current directory'
 complete -c cop      -l test     -d 'Run self-tests'
 complete -c cop      -l completions -r -d 'Emit shell completions (e.g. fish)'
 
@@ -192,6 +197,43 @@ osc52_copy() {
   # Write directly to /dev/tty so it reaches the terminal even through pipes.
   # BEL terminator (\007) is universally supported (Ghostty, kitty, iTerm2, …).
   printf '\033]52;c;%s\007' "$b64" >/dev/tty
+}
+
+# OSC 52 paste: send a read request and wait for the terminal's response.
+# Support is limited: Ghostty, kitty, xterm, and a handful of others respond.
+# Most terminals (including tmux by default) silently ignore the request.
+osc52_paste() {
+  # Save terminal state, switch to raw mode to read response
+  local old_stty
+  old_stty=$(stty -g </dev/tty)
+  stty raw -echo min 0 time 2 </dev/tty
+
+  # Send OSC 52 read request
+  printf '\033]52;c;?\007' >/dev/tty
+
+  # Read response: OSC 52 ; c ; <base64> BEL  (or ST = ESC \)
+  local response=""
+  local char
+  while IFS= read -r -s -n1 char </dev/tty; do
+    response+="$char"
+    # Stop on BEL or ESC-backslash terminator
+    if [[ "$char" == $'\007' ]]; then break; fi
+    if [[ "${response}" == *$'\033\\'* ]]; then break; fi
+    # Bail if response grows unreasonably (unsupported terminal returning noise)
+    ((${#response} > 8192)) && break
+  done
+
+  stty "$old_stty" </dev/tty
+
+  # Extract base64 payload from:  ESC ] 52 ; c ; <b64> BEL
+  local b64
+  b64=$(printf "%s" "$response" | sed 's/.*52;c;//; s/\x07//g; s/\x1b\\//g')
+
+  if [[ -z "$b64" ]]; then
+    return 1
+  fi
+
+  printf "%s" "$b64" | b64_decode
 }
 
 # --- Copy Command Detection --------------------------------------------------
@@ -257,6 +299,18 @@ find_paste_cmd() {
 }
 
 get_local_clipboard() {
+  # SSH session without a local paste tool: try OSC 52 read
+  if is_ssh_session && ! find_paste_cmd &>/dev/null; then
+    local out
+    if out=$(osc52_paste 2>/dev/null) && [[ -n "$out" ]]; then
+      PASTE_USED="osc52"
+      printf "%s" "$out"
+      return 0
+    fi
+    log "OSC 52 paste unsupported by terminal — try cop -pn or ensure terminal supports OSC 52 read"
+    exit 1
+  fi
+
   local cmd
   cmd=$(find_paste_cmd) || {
     log "No paste utility found"
@@ -453,6 +507,17 @@ print_info() {
 
   printf "\n  %sActive:%s copy=%s, paste=%s\n" \
     "$C_SKY" "$C_RESET" "$copy_cmd" "$current" >&2
+}
+
+# --- Notes -------------------------------------------------------------------
+do_notes() {
+  local notes_file="NOTES.md"
+  if [[ ! -f "$notes_file" ]]; then
+    printf "# NOTES.md\n\n---\n[NOTES.md convention](https://github.com/goude/NOTES.md)\n" >"$notes_file"
+    printf "📋 %sCreated%s %s\n" "$C_MINT" "$C_RESET" "$notes_file" >&2
+  fi
+  local editor="${EDITOR:-vi}"
+  exec "$editor" "$notes_file"
 }
 
 # --- Main Operations ---------------------------------------------------------
@@ -684,6 +749,15 @@ cop_run_tests() {
     comp="$("$COP_BIN" --completions fish)"
     [[ "$comp" == *"complete -c cop"* ]] || fail "--completions fish output missing 'complete -c cop'"
 
+    # 10) --notes creates NOTES.md with expected content
+    EDITOR="true" "$COP_BIN" --notes
+    [[ -f "NOTES.md" ]] || fail "--notes did not create NOTES.md"
+    grep -q "NOTES.md convention" NOTES.md || fail "--notes NOTES.md missing convention link"
+    # second invocation should not overwrite
+    printf "extra\n" >>NOTES.md
+    EDITOR="true" "$COP_BIN" --notes
+    grep -q "extra" NOTES.md || fail "--notes overwrote existing NOTES.md"
+
     echo "All cop self tests passed."
   )
 }
@@ -693,7 +767,10 @@ main() {
   local paste=0 network=0 enc=0 copy_flag=0 info_flag=0 stdout_flag=0 append=0
 
   # Symlink detection
-  [[ "$(basename "$0")" == "pas" ]] && paste=1
+  local basename
+  basename="$(basename "$0")"
+  [[ "$basename" == "pas" ]]   && paste=1
+  [[ "$basename" == "notes" ]] && { do_notes; exit 0; }
 
   # Run tests
   if [[ "${1:-}" == "--test" ]]; then
@@ -709,12 +786,13 @@ main() {
       show_usage
       exit 0
       ;;
-    --info) info_flag=1 ;;
-    --paste) paste=1 ;;
+    --notes)  do_notes; exit 0 ;;
+    --info)   info_flag=1 ;;
+    --paste)  paste=1 ;;
     --network) network=1 ;;
     --encrypt) enc=1 ;;
-    --copy) copy_flag=1 ;;
-    --tee) stdout_flag=1 ;;
+    --copy)   copy_flag=1 ;;
+    --tee)    stdout_flag=1 ;;
     --append) append=1 ;;
     --completions)
       shift
