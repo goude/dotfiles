@@ -16,6 +16,7 @@ $nodejs\
 $rust\
 $c\
 $docker_context\
+${custom.ssh}\
 ${custom.gitmail}\
 $cmd_duration\
 $line_break\
@@ -134,6 +135,12 @@ command = "df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); 
 when = "df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); exit !($5 > 90)}'"
 format = ' [$output]($style) '
 style = 'bold green'
+
+[custom.ssh]
+command = 'echo "$(hostname -s)"'
+when = '[ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]'
+format = '[󰣀 $output]($style) '
+style = 'bold red'
 
 # ─────────────────────────────────────────────────────────────
 # RIGHT SIDE & TIME
