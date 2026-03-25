@@ -1,11 +1,11 @@
 function new_pwd --on-variable PWD --description 'Show NOTES preview on dir change'
     status --is-command-substitution; and return
 
-    set dir (pwd)
-    set now (date +%s)
+    set -l dir (pwd)
+    set -l now (date +%s)
 
     # Pick NOTES file if present
-    set notes ""
+    set -l notes ""
     if test -f NOTES.md
         set notes NOTES.md
     else if test -f _NOTES.md
@@ -15,10 +15,10 @@ function new_pwd --on-variable PWD --description 'Show NOTES preview on dir chan
     end
 
     # State file per directory (hashed path)
-    set key (string replace -a "/" "_" $dir)
-    set statefile "/tmp/.fish_notes_$key"
+    set -l key (string replace -a "/" "_" $dir)
+    set -l statefile "/tmp/.fish_notes_$key"
 
-    set last 0
+    set -l last 0
     if test -f $statefile
         set last (cat $statefile)
     end
@@ -28,7 +28,19 @@ function new_pwd --on-variable PWD --description 'Show NOTES preview on dir chan
         return
     end
 
-    echo $now > $statefile
+    echo $now >$statefile
+
+    # Staleness warning — nudge if NOTES.md hasn't been touched in over a week
+    set -l mtime (stat -c %Y $notes 2>/dev/null; or stat -f %m $notes 2>/dev/null)
+    if test -n "$mtime"
+        set -l age (math "$now - $mtime")
+        if test $age -gt 604800
+            set -l days (math --scale=0 "$age / 86400")
+            set_color ff8c00  # orange
+            printf "📝 %s hasn't been updated in %s days — time for a review?\n" $notes $days
+            set_color normal
+        end
+    end
 
     # Pick viewer
     if type -q bat

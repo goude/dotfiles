@@ -35,7 +35,6 @@ if functions -q load_em
 end
 
 # ---------- Homebrew ----------
-# Homebrew (only if present)
 if test -x /opt/homebrew/bin/brew
     /opt/homebrew/bin/brew shellenv | source
 end
