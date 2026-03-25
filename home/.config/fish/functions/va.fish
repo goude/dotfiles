@@ -1,4 +1,4 @@
-function va
+function va --description 'Activate Python virtualenv'
     if test -f .venv/bin/activate.fish
         source .venv/bin/activate.fish
     else if test -f *-venv/bin/activate.fish

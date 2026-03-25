@@ -11,10 +11,11 @@ alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
 alias .....='cd ../../../..'
-#alias cdr='cd "$(git rev-parse --show-toplevel)"'
 
-alias ta='tmux attach || tmux new'
+# short form aliases - watch out for collisions with existing commands
 alias n='nvim'
+alias k='kubectl'
+alias mgs='mgitstatus ~/repos ~/.homesick/repos'
 
 # git aliases
 alias gs='git status'
@@ -22,22 +23,17 @@ alias ga='git add'
 alias gca='git commit -a'
 alias gp='git push'
 
+# tmux aliases
+alias ta='tmux attach || tmux new'
+alias clp='tmux split-window && exit'
+alias tlk='tmux kill-session -a && tmux kill-server'
+
 # system shortcuts
 alias sau='sudo apt update && sudo apt upgrade -y'
 
 # homeshick aliases
 alias ho='homeshick'
 alias hocd='homeshick cd'
-
-# short form aliases - watch out for collisions with existing commands
-alias n='nvim'
-alias k='kubectl'
-alias mgs='mgitstatus ~/repos ~/.homesick/repos'
-
-# tmux aliases
-alias ta='tmux attach || tmux new'
-alias clp='tmux split-window && exit'
-alias tlk='tmux kill-session -a && tmux kill-server'
 
 # misc aliases
 alias serve-directory='python3 -m http.server'
