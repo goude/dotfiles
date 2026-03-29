@@ -67,10 +67,59 @@ stale-links-clean:
     done < <(find "$HOME" -maxdepth 4 -type l -print0 2>/dev/null)
     echo "  Done."
 
+# 🎨 Format shell scripts with shfmt
+fmt:
+    shfmt -w setup/*.sh setup/install/*.sh
+    @echo "Format complete."
+
 # ✅ Lint shell scripts with shellcheck
 lint:
     shellcheck setup/*.sh setup/install/*.sh || true
     @echo "Lint complete."
+
+# 🚦 Format + lint gate
+check: fmt lint
+    @echo "Check complete."
+
+# 🩺 Verify expected tools are installed
+doctor:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ok=1
+    check() {
+      if command -v "$1" &>/dev/null; then
+        printf "  %-20s ok\n" "$1"
+      else
+        printf "  %-20s MISSING\n" "$1"
+        ok=0
+      fi
+    }
+    echo "=== doctor ==="
+    check git
+    check curl
+    check fish
+    check fzf
+    check fd
+    check bat
+    check eza
+    check rg
+    check tmux
+    check tig
+    check nvim
+    check starship
+    check shfmt
+    check shellcheck
+    check node
+    check python3
+    check uv
+    check homeshick
+    echo ""
+    if [ "$ok" -eq 1 ]; then
+      echo "All tools present."
+    else
+      echo "Some tools are missing — run: just setup"
+      exit 1
+    fi
 
 # 🔄 Nuclear reset — remove tool installs, re-run setup
 reset:
