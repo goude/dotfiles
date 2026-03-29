@@ -1,3 +1,4 @@
+#FIXME: the intent is that we want the latest version of starship, and the latest stable versions of shfmt and rust-analyzer
 #!/usr/bin/env bash
 set -e
 

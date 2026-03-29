@@ -159,7 +159,7 @@ keybinds clear-defaults=true {
         bind "Ctrl Super o" { SwitchToMode "session"; }
     }
     shared_except "locked" "scroll" "search" "tmux" {
-        bind "Ctrl a" { SwitchToMode "tmux"; }
+        bind "Ctrl b" { SwitchToMode "tmux"; }
     }
     shared_except "locked" "scroll" "entersearch" "renametab" "renamepane" "prompt" "tmux" {
         bind "Ctrl Super s" { SwitchToMode "scroll"; }

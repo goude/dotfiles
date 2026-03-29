@@ -1,3 +1,4 @@
+#FIXME: intent here is to get the latest stable version - would be great if it could work for both standard docker container,running on bare metal linux, and rpi 500 and also macos
 #!/usr/bin/env bash
 set -e
 

@@ -1,3 +1,4 @@
+#FIXME: some of these have been useful to have for neovim etc - now using mostly lazyvim so see what is needed and what can be left out
 #!/bin/bash
 source "$HOME/.nvm/nvm.sh"
 nvm use node

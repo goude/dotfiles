@@ -1,3 +1,4 @@
+#FIXME: here we want a stable solution-it should get a good stable version needn't be the latest of node, so 22 for now is fine make configurable
 #!/usr/bin/env bash
 # change to clone repo instead, see instructions at
 # https://github.com/creationix/nvm/blob/master/README.markdown#install-script

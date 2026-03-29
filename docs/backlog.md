@@ -1,5 +1,8 @@
 # TODO
 
+- [ ] Refactor and reevaluate this backlog - based on recent changes and deletions
+- [ ] create a justfile task to search for stale symlinks pointing to this repo, and deleting those links
+
 Suggested improvements for the dotfiles repository.
 
 ## Setup & Installation

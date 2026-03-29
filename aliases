@@ -15,7 +15,6 @@ alias .....='cd ../../../..'
 # short form aliases - watch out for collisions with existing commands
 alias n='nvim'
 alias k='kubectl'
-alias mgs='mgitstatus ~/repos ~/.homesick/repos'
 
 # git aliases
 alias gs='git status'

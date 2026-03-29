@@ -1,3 +1,4 @@
+#FIXME:it would be great if this could also support cloning the git@ ssh version also, if such access is available. otherwise clone the https version
 #!/usr/bin/env bash
 
 REPOS=$HOME/.homesick/repos
