@@ -1,3 +1,20 @@
+# Deferred from setup/justfile reorganization
+
+- [ ] Add `just fmt` recipe (shfmt --write on all .sh files)
+- [ ] Add `just check` recipe (fmt + lint + test gate)
+- [ ] Add `just dev` recipe for quick iteration (e.g. test shell config in Docker)
+- [ ] Add GitHub Actions CI workflow for shellcheck + shfmt
+- [ ] Add editorconfig validation to lint
+- [ ] Test setup scripts on all target platforms (RPi 500, macOS brew, Ubuntu LTS, WSL2)
+- [ ] Add `just update` recipe to pull latest versions of installed tools
+- [ ] Consider replacing fasd with zoxide (fasd is unmaintained)
+- [ ] Add rust-analyzer install back to tools.sh (removed — only needed for Rust projects)
+- [ ] Add `just doctor` recipe to verify all expected tools are installed and working
+- [ ] Remove old `setup/install/` directory once new scripts are validated on all platforms
+- [ ] Remove old `setup/install-linux.sh` and `setup/base.yml` once new scripts are validated
+
+---
+
 # TODO
 
 - [ ] Refactor and reevaluate this backlog - based on recent changes and deletions
@@ -7,11 +24,11 @@ Suggested improvements for the dotfiles repository.
 
 ## Setup & Installation
 
-- [ ] Add an install script entry point (`setup/install.sh`) that orchestrates all install scripts in order
+- [x] Add an install script entry point (`setup/setup.sh`) that orchestrates all install scripts in order
 - [ ] Pin tool versions in `binary-tools-install.sh` (shfmt is pinned but starship and rust-analyzer pull latest)
-- [ ] Update NVM version in `nvm-install.sh` (currently v0.39.2, latest is v0.40+)
-- [ ] Add macOS support to `setup/base.yml` (currently Debian/Ubuntu only)
-- [ ] Add a `Makefile` or `justfile` at the repo root for common tasks (install, link, lint, update)
+- [x] Update NVM version in `nvm-install.sh` (currently v0.39.2, latest is v0.40+)
+- [x] Add macOS support to `setup/base.yml` (currently Debian/Ubuntu only)
+- [x] Add a `justfile` at the repo root for common tasks (install, link, lint, update)
 
 ## Shell Configuration
 
@@ -58,5 +75,4 @@ Suggested improvements for the dotfiles repository.
 ## CI / Quality
 
 - [ ] Add a GitHub Actions workflow for linting (shellcheck, shfmt, yamllint)
-- [ ] Add an Ansible syntax check for `setup/base.yml`
 - [ ] Add editorconfig validation

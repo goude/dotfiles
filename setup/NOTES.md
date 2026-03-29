@@ -1,24 +1,35 @@
-# Installation Notes
+# Setup
 
-FIXME: see if this can be made more elegant. what actually is needed? a certain number of packages to be installed either apt install or brew install - but ansible is overkill for this prob. also the setup scripts can be made more elegant and prob idempotent as well
+Run `just setup` after cloning. It runs each script in order:
 
-FIXME: this setup/ subdir should be simple but support setting up a working environment around the dotfiles repo meaning mainly a lazyvim installation,uv python 3.12+(latest stable),node at some stable version(22+),and it should work for my main working environments like rpi500, macos brew, ubuntu lts server, (and also secondarily wsl2)
+1. **packages.sh** — system packages via apt (Linux/WSL) or brew (macOS)
+2. **uv.sh** — Python via uv (currently 3.13)
+3. **node.sh** — Node.js via nvm (currently 22)
+4. **neovim.sh** — latest stable Neovim (platform-aware binary)
+5. **tools.sh** — starship prompt, shfmt
+6. **homeshick.sh** — clone and link dotfiles
 
-FIXME: restructure this into something elegant and easy to use
+Each script sources `lib.sh` for platform detection and helpers.
+Scripts are idempotent — safe to re-run.
 
-## starship
+## Supported platforms
 
-For now the fish init for starship is using a workaround. This will probably not be needed once
-a newer version of fish is used.
+- Ubuntu LTS (server / desktop)
+- Raspberry Pi 500 (aarch64)
+- macOS (Homebrew)
+- WSL2
 
-<https://github.com/starship/starship/issues/6336>
+## Starship
+
+For now the fish init for starship uses a workaround (fish <3.4):
 
 ```bash
 starship init fish --print-full-init | sed 's/"$(commandline)"/(commandline | string collect)/' | source
 ```
 
-## Rstudio Server
+See: <https://github.com/starship/starship/issues/6336>
 
-- .Renviron: set https?\_proxy and possibly TZ="Europe/Stockholm"
-- <https://posit.co/download/rstudio-server/>
-- sudo apt-get install -y libxml2-dev libcurl4-openssl-dev libssl-dev
+## Legacy
+
+The `install/` subdirectory contains the previous setup scripts.
+These will be removed once the new scripts are validated on all platforms.
