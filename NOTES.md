@@ -1,1 +1,2 @@
-This is neat
+- check cop is working
+- remove adages stuff
