@@ -69,12 +69,12 @@ stale-links-clean:
 
 # 🎨 Format shell scripts with shfmt
 fmt:
-    shfmt -w setup/*.sh setup/install/*.sh
+    shfmt -w setup/*.sh
     @echo "Format complete."
 
 # ✅ Lint shell scripts with shellcheck
 lint:
-    shellcheck setup/*.sh setup/install/*.sh || true
+    shellcheck setup/*.sh || true
     @echo "Lint complete."
 
 # 🚦 Format + lint gate

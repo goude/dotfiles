@@ -1,2 +1,0 @@
-- check cop is working
-- remove adages stuff
