@@ -28,7 +28,7 @@ install_neovim_binary() {
 
 	info "Installing Neovim $tag ($suffix)..."
 	ensure_dir "$nvim_dir"
-	cd "$nvim_dir"
+	cd "$nvim_dir" || exit 1
 
 	curl -fsSLO "https://github.com/neovim/neovim/releases/download/${tag}/${tarball}"
 	rm -rf "nvim-${suffix}"

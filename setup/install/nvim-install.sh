@@ -1,10 +1,10 @@
-#FIXME: intent here is to get the latest stable version - would be great if it could work for both standard docker container,running on bare metal linux, and rpi 500 and also macos
 #!/usr/bin/env bash
+#FIXME: intent here is to get the latest stable version - would be great if it could work for both standard docker container,running on bare metal linux, and rpi 500 and also macos
 set -e
 
 mkdir -p ~/.nvim/
 rm -rf ~/.nvim/nvim-linux64
-cd ~/.nvim/
+cd ~/.nvim/ || exit 1
 
 #wget https://github.com/neovim/neovim/releases/download/v0.10.2/nvim-linux64.tar.gz
 wget https://github.com/neovim/neovim/releases/download/v0.11.4/nvim-linux-arm64.tar.gz
