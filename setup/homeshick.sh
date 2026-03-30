@@ -11,17 +11,17 @@ github_clone "goude/homeshick" "$REPOS/homeshick"
 source "$REPOS/homeshick/homeshick.sh"
 
 HOMESHICK_REPOS=(
-  "goude/dotfiles"
+	"goude/dotfiles"
 )
 
 for repo in "${HOMESHICK_REPOS[@]}"; do
-  if [ -d "$REPOS/$(basename "$repo")" ]; then
-    ok "$repo already cloned"
-  else
-    info "Cloning $repo..."
-    homeshick --force --batch clone "$repo"
-    ok "$repo cloned"
-  fi
+	if [ -d "$REPOS/$(basename "$repo")" ]; then
+		ok "$repo already cloned"
+	else
+		info "Cloning $repo..."
+		homeshick --force --batch clone "$repo"
+		ok "$repo cloned"
+	fi
 done
 
 info "Linking dotfiles..."

@@ -6,14 +6,14 @@ source "$SCRIPT_DIR/lib.sh"
 PYTHON_VERSION="${PYTHON_VERSION:-3.13}"
 
 if has_cmd uv; then
-  ok "uv already installed"
-  info "Updating uv..."
-  uv self update 2>/dev/null || true
+	ok "uv already installed"
+	info "Updating uv..."
+	uv self update 2>/dev/null || true
 else
-  info "Installing uv..."
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-  export PATH="$HOME/.local/bin:$PATH"
-  ok "uv installed"
+	info "Installing uv..."
+	curl -LsSf https://astral.sh/uv/install.sh | sh
+	export PATH="$HOME/.local/bin:$PATH"
+	ok "uv installed"
 fi
 
 info "Ensuring Python $PYTHON_VERSION is available..."

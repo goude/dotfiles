@@ -9,11 +9,11 @@ NVM_VERSION="${NVM_VERSION:-0.40.3}"
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 
 if [ -s "$NVM_DIR/nvm.sh" ]; then
-  ok "nvm already installed"
+	ok "nvm already installed"
 else
-  info "Installing nvm $NVM_VERSION..."
-  curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh" | bash
-  ok "nvm installed"
+	info "Installing nvm $NVM_VERSION..."
+	curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh" | bash
+	ok "nvm installed"
 fi
 
 # shellcheck disable=SC1091

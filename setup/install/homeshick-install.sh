@@ -8,11 +8,11 @@ source "$REPOS/homeshick/homeshick.sh"
 echo "Cloning homeshick repos..."
 
 homeshick_repos=(
-  "goude/dotfiles"
+	"goude/dotfiles"
 )
 
 for i in "${homeshick_repos[@]}"; do
-  homeshick --force --batch clone "$i"
+	homeshick --force --batch clone "$i"
 done
 
 echo "Silently and forcefully linking homeshick..."
