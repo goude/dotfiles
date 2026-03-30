@@ -3,6 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib.sh"
 
 printf '\n  \033[1mdotfiles setup\033[0m  (%s / %s)\n\n' "$OS" "$ARCH"
@@ -21,4 +22,5 @@ run_step "CLI tools" tools.sh
 run_step "Homeshick" homeshick.sh
 
 printf '\n  \033[1;32m✓ Setup complete.\033[0m\n'
+# shellcheck disable=SC2016
 printf '  Restart your shell or run: exec $SHELL\n\n'

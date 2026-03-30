@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Install latest stable Neovim
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib.sh"
 
 ensure_bin_dir

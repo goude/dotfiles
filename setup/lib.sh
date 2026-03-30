@@ -22,11 +22,13 @@ detect_arch() {
 	case "$(uname -m)" in
 	x86_64 | amd64) echo "x86_64" ;;
 	aarch64 | arm64) echo "aarch64" ;;
-	*) echo "$(uname -m)" ;;
+	*) uname -m ;;
 	esac
 }
 
+# shellcheck disable=SC2034
 OS="$(detect_os)"
+# shellcheck disable=SC2034
 ARCH="$(detect_arch)"
 
 # -- Output helpers --

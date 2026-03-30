@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Install nvm and Node.js
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib.sh"
 
 NODE_VERSION="${NODE_VERSION:-22}"

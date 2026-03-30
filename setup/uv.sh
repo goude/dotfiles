@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Install uv (Python package manager) and a current stable Python
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib.sh"
 
 PYTHON_VERSION="${PYTHON_VERSION:-3.13}"

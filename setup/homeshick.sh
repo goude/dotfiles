@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Install homeshick and clone dotfiles
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib.sh"
 
 REPOS="$HOME/.homesick/repos"
