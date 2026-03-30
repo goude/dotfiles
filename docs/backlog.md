@@ -1,15 +1,15 @@
 # Deferred from setup/justfile reorganization
 
-- [ ] Add `just fmt` recipe (shfmt --write on all .sh files)
-- [ ] Add `just check` recipe (fmt + lint + test gate)
+- [x] Add `just fmt` recipe (shfmt --write on all .sh files)
+- [x] Add `just check` recipe (fmt + lint + test gate)
 - [ ] Add `just dev` recipe for quick iteration (e.g. test shell config in Docker)
-- [ ] Add GitHub Actions CI workflow for shellcheck + shfmt
+- [x] Add GitHub Actions CI workflow for shellcheck + shfmt
 - [ ] Add editorconfig validation to lint
 - [ ] Test setup scripts on all target platforms (RPi 500, macOS brew, Ubuntu LTS, WSL2)
 - [ ] Add `just update` recipe to pull latest versions of installed tools
 - [ ] Consider replacing fasd with zoxide (fasd is unmaintained)
 - [ ] Add rust-analyzer install back to tools.sh (removed — only needed for Rust projects)
-- [ ] Add `just doctor` recipe to verify all expected tools are installed and working
+- [x] Add `just doctor` recipe to verify all expected tools are installed and working
 - [ ] Remove old `setup/install/` directory once new scripts are validated on all platforms
 - [ ] Remove old `setup/install-linux.sh` and `setup/base.yml` once new scripts are validated
 
@@ -18,7 +18,7 @@
 # TODO
 
 - [ ] Refactor and reevaluate this backlog - based on recent changes and deletions
-- [ ] create a justfile task to search for stale symlinks pointing to this repo, and deleting those links
+- [x] create a justfile task to search for stale symlinks pointing to this repo, and deleting those links
 
 Suggested improvements for the dotfiles repository.
 
@@ -74,5 +74,6 @@ Suggested improvements for the dotfiles repository.
 
 ## CI / Quality
 
-- [ ] Add a GitHub Actions workflow for linting (shellcheck, shfmt, yamllint)
+- [x] Add a GitHub Actions workflow for linting (shellcheck, shfmt)
+- [ ] Add yamllint to CI
 - [ ] Add editorconfig validation
