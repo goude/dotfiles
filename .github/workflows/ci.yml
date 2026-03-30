@@ -16,9 +16,8 @@ jobs:
 
       - name: Install shfmt
         run: |
-          curl -fsSL https://github.com/mvdan/sh/releases/latest/download/shfmt_linux_amd64 \
-            -o /usr/local/bin/shfmt
-          chmod +x /usr/local/bin/shfmt
+          go install mvdan.cc/sh/v3/cmd/shfmt@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Check formatting (shfmt)
         run: shfmt -d setup/*.sh setup/install/*.sh
