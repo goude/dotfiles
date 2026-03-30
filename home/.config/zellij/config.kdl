@@ -29,6 +29,15 @@ keybinds clear-defaults=true {
         bind "down" { GoToNextTab; }
         bind "up" { GoToPreviousTab; }
         bind "right" { GoToNextTab; }
+        bind "1" { GoToTab 1; SwitchToMode "normal"; }
+        bind "2" { GoToTab 2; SwitchToMode "normal"; }
+        bind "3" { GoToTab 3; SwitchToMode "normal"; }
+        bind "4" { GoToTab 4; SwitchToMode "normal"; }
+        bind "5" { GoToTab 5; SwitchToMode "normal"; }
+        bind "6" { GoToTab 6; SwitchToMode "normal"; }
+        bind "7" { GoToTab 7; SwitchToMode "normal"; }
+        bind "8" { GoToTab 8; SwitchToMode "normal"; }
+        bind "9" { GoToTab 9; SwitchToMode "normal"; }
         bind "[" { BreakPaneLeft; SwitchToMode "normal"; }
         bind "]" { BreakPaneRight; SwitchToMode "normal"; }
         bind "b" { BreakPane; SwitchToMode "normal"; }
@@ -85,6 +94,7 @@ keybinds clear-defaults=true {
         bind "n" { Search "down"; }
         bind "o" { SearchToggleOption "WholeWord"; }
         bind "p" { Search "up"; }
+        bind "Ctrl s" { SwitchToMode "normal"; }
         bind "w" { SearchToggleOption "Wrap"; }
     }
     session {
@@ -201,17 +211,6 @@ keybinds clear-defaults=true {
     shared_among "pane" "tmux" {
         bind "x" { CloseFocus; SwitchToMode "normal"; }
     }
-    shared_among "tab" "tmux" {
-        bind "1" { GoToTab 1; SwitchToMode "normal"; }
-        bind "2" { GoToTab 2; SwitchToMode "normal"; }
-        bind "3" { GoToTab 3; SwitchToMode "normal"; }
-        bind "4" { GoToTab 4; SwitchToMode "normal"; }
-        bind "5" { GoToTab 5; SwitchToMode "normal"; }
-        bind "6" { GoToTab 6; SwitchToMode "normal"; }
-        bind "7" { GoToTab 7; SwitchToMode "normal"; }
-        bind "8" { GoToTab 8; SwitchToMode "normal"; }
-        bind "9" { GoToTab 9; SwitchToMode "normal"; }
-    }
     shared_among "scroll" "search" {
         bind "PageDown" { PageScrollDown; }
         bind "PageUp" { PageScrollUp; }
@@ -265,11 +264,7 @@ keybinds clear-defaults=true {
         bind "\"" { NewPane "down"; SwitchToMode "normal"; }
         bind "%" { NewPane "right"; SwitchToMode "normal"; }
         bind "," { SwitchToMode "renametab"; }
-        bind "-" { NewPane "down"; SwitchToMode "normal"; }
-        bind "H" { Resize "Decrease"; }
-        bind "L" { Resize "Increase"; }
         bind "[" { SwitchToMode "scroll"; }
-        bind "Ctrl a" { Write 1; SwitchToMode "normal"; }
         bind "Ctrl b" { Write 2; SwitchToMode "normal"; }
         bind "c" { NewTab; SwitchToMode "normal"; }
         bind "h" { MoveFocus "left"; SwitchToMode "normal"; }
@@ -280,7 +275,6 @@ keybinds clear-defaults=true {
         bind "o" { FocusNextPane; }
         bind "p" { GoToPreviousTab; SwitchToMode "normal"; }
         bind "z" { ToggleFocusFullscreen; SwitchToMode "normal"; }
-        bind "|" { NewPane "right"; SwitchToMode "normal"; }
     }
 }
 
@@ -297,9 +291,7 @@ plugins {
     session-manager location="zellij:session-manager"
     status-bar location="zellij:status-bar"
     strider location="zellij:strider"
-    tab-bar location="zellij:tab-bar" {
-        show_index true
-    }
+    tab-bar location="zellij:tab-bar"
     welcome-screen location="zellij:session-manager" {
         welcome_screen true
     }
@@ -319,12 +311,12 @@ web_client {
 //   - true
 //   - false (Default)
 //
-simplified_ui true
+// simplified_ui true
 
 // Choose the theme that is specified in the themes section.
 // Default: default
 //
-theme "gruvbox-dark"
+// theme "dracula"
 
 // Choose the base input mode of zellij.
 // Default: normal
@@ -334,7 +326,7 @@ theme "gruvbox-dark"
 // Choose the path to the default shell that zellij will use for opening new panes
 // Default: $SHELL
 //
-default_shell "fish"
+// default_shell "fish"
 
 // Choose the path to override cwd that zellij will use for opening new panes
 //
@@ -369,7 +361,7 @@ default_shell "fish"
 //   - true (default, enabled)
 //   - false
 //
-pane_frames false
+// pane_frames false
 
 // When attaching to an existing session with other users,
 // should the session be mirrored (true)
@@ -407,7 +399,7 @@ pane_frames false
 // copy_command "wl-copy"                    // wayland
 // copy_command "pbcopy"                     // osx
 //
-copy_command "cop"
+// copy_command "pbcopy"
 
 // Choose the destination for copied text
 // Allows using the primary selection buffer (on x11/wayland) instead of the system clipboard.
@@ -432,13 +424,13 @@ copy_command "cop"
 // otherwise this will error if such a session exists.
 // Default: <RANDOM>
 //
-session_name "qyq"
+// session_name "My singleton session"
 
 // When `session_name` is provided, attaches to that session
 // if it is already running or creates it otherwise.
 // Default: false
 //
-attach_to_session true
+// attach_to_session true
 
 // Toggle between having Zellij lay out panes according to a predefined set of layouts whenever possible
 // Options:
@@ -505,7 +497,7 @@ attach_to_session true
 // - false
 // Default: false
 //
-web_server false
+// web_server false
 // Whether to allow sessions started in the terminal to be shared through a local web server, assuming one is
 // running (see the `web_server` option for more details).
 // (Requires restart)
@@ -545,7 +537,7 @@ web_server false
 // Whether to show tips on startup
 // Default: true
 //
-show_startup_tips false
+// show_startup_tips false
 
 // Whether to show release notes on first version run
 // Default: true
