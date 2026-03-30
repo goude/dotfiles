@@ -72,19 +72,6 @@ fi
 export HISTIGNORE="${HISTIGNORE:+$HISTIGNORE:}*SECRET*:*TOKEN*:*PASSWORD*:*PASSWD*:*API_KEY*:*PRIVATE_KEY*"
 export HISTCONTROL="${HISTCONTROL:+$HISTCONTROL:}ignorespace"  # lines prefixed with space are never recorded
 
-# — Secrets file —
-_secrets="$HOME/.secrets"
-if [[ -f "$_secrets" ]]; then
-  _perms="$(stat -c '%a' "$_secrets" 2>/dev/null || stat -f '%OLp' "$_secrets" 2>/dev/null)"
-  if [[ "$_perms" != "600" ]]; then
-    echo "WARNING: $_secrets has permissions $_perms (expected 600). Skipping." >&2
-  else
-    # shellcheck disable=SC1090
-    source "$_secrets"
-  fi
-fi
-unset _secrets _perms
-
 # — Platform adjustments —
 if grep -qi microsoft /proc/version 2>/dev/null; then
   export BROWSER="wslview"

@@ -63,3 +63,20 @@ nerdfont_icon_search() {
 function emoji_search() {
   emojify -l | tail -n +5 | sort | fzf
 }
+
+load_secrets() {
+  local _secrets="$HOME/.secrets"
+  if [[ ! -f "$_secrets" ]]; then
+    echo "No secrets file found at $_secrets" >&2
+    return 1
+  fi
+  local _perms
+  _perms="$(stat -c '%a' "$_secrets" 2>/dev/null || stat -f '%OLp' "$_secrets" 2>/dev/null)"
+  if [[ "$_perms" != "600" ]]; then
+    echo "WARNING: $_secrets has permissions $_perms (expected 600). Skipping." >&2
+    return 1
+  fi
+  # shellcheck disable=SC1090
+  source "$_secrets"
+  echo "Secrets loaded."
+}
