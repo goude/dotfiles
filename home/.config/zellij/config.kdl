@@ -135,24 +135,52 @@ keybinds clear-defaults=true {
             SwitchToMode "normal"
         }
     }
+
+    // The Useful Ones
     shared_among "normal" "locked" {
-        bind "Ctrl Alt left" { MoveFocusOrTab "left"; }
-        bind "Ctrl Alt down" { MoveFocus "down"; }
-        bind "Ctrl Alt up" { MoveFocus "up"; }
-        bind "Ctrl Alt right" { MoveFocusOrTab "right"; }
         bind "Ctrl Alt +" { Resize "Increase"; }
-        bind "Ctrl Alt -" { Resize "Decrease"; }
-        bind "Ctrl Alt =" { Resize "Increase"; }
+        bind "Ctrl Alt =" { Resize "Decrease"; }
+
         bind "Ctrl Alt [" { PreviousSwapLayout; }
         bind "Ctrl Alt ]" { NextSwapLayout; }
+
         bind "Ctrl Alt f" { ToggleFloatingPanes; }
+        bind "Ctrl Alt z" { ToggleFocusFullscreen; }
+
         bind "Ctrl Alt h" { MoveFocusOrTab "left"; }
-        bind "Ctrl Alt i" { MoveTab "left"; }
         bind "Ctrl Alt j" { MoveFocus "down"; }
         bind "Ctrl Alt k" { MoveFocus "up"; }
         bind "Ctrl Alt l" { MoveFocusOrTab "right"; }
-        bind "Ctrl Alt n" { NewPane; }
+
+        bind "Ctrl Alt left" { GoToPreviousTab; }
+        bind "Ctrl Alt down" { MoveFocus "down"; }
+        bind "Ctrl Alt up" { MoveFocus "up"; }
+        bind "Ctrl Alt right" { GoToNextTab; }
+
+        bind "Ctrl Alt H" { GoToPreviousTab; }
+        bind "Ctrl Alt L" { GoToNextTab; }
+
         bind "Ctrl Alt o" { MoveTab "right"; }
+        bind "Ctrl Alt i" { MoveTab "left"; }
+
+        bind "Ctrl Alt n" { NewPane; }
+        bind "Ctrl Alt N" { NewTab; SwitchToMode "normal"; }
+
+        bind "Ctrl Alt r" { SwitchToMode "renametab"; PaneNameInput 0; }
+
+        bind "Ctrl Alt -" { NewPane "down"; }
+        bind "Ctrl Alt \\" { NewPane "right"; }
+
+        bind "Ctrl Alt x" { CloseFocus; }
+
+        bind "Ctrl Alt q" { Detach; }
+
+        bind "Ctrl Alt 1" { GoToTab 1; SwitchToMode "normal"; }
+        bind "Ctrl Alt 2" { GoToTab 2; SwitchToMode "normal"; }
+        bind "Ctrl Alt 3" { GoToTab 3; SwitchToMode "normal"; }
+        bind "Ctrl Alt 4" { GoToTab 4; SwitchToMode "normal"; }
+        bind "Ctrl Alt 5" { GoToTab 5; SwitchToMode "normal"; }
+        bind "Ctrl Alt 6" { GoToTab 6; SwitchToMode "normal"; }
     }
     shared_except "locked" {
         bind "Alt p" { TogglePaneInGroup; }
