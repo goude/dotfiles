@@ -20,7 +20,7 @@ jobs:
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Check formatting (shfmt)
-        run: shfmt -d setup/*.sh setup/install/*.sh
+        run: shfmt -d setup/*.sh
 
       - name: Lint (shellcheck)
-        run: shellcheck setup/*.sh setup/install/*.sh
+        run: shellcheck setup/*.sh

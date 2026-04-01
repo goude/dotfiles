@@ -29,7 +29,3 @@ starship init fish --print-full-init | sed 's/"$(commandline)"/(commandline | st
 
 See: <https://github.com/starship/starship/issues/6336>
 
-## Legacy
-
-The `install/` subdirectory contains the previous setup scripts.
-These will be removed once the new scripts are validated on all platforms.
