@@ -163,8 +163,7 @@ keybinds clear-defaults=true {
         bind "Ctrl Alt o" { MoveTab "right"; }
         bind "Ctrl Alt i" { MoveTab "left"; }
 
-        bind "Ctrl Alt n" { NewPane; }
-        bind "Ctrl Alt N" { NewTab; SwitchToMode "normal"; }
+        bind "Ctrl Alt n" { NewTab; SwitchToMode "normal"; }
 
         bind "Ctrl Alt r" { SwitchToMode "renametab"; PaneNameInput 0; }
 
