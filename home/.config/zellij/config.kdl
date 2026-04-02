@@ -182,6 +182,7 @@ keybinds clear-defaults=true {
         bind "Ctrl Alt 5" { GoToTab 5; SwitchToMode "normal"; }
         bind "Ctrl Alt 6" { GoToTab 6; SwitchToMode "normal"; }
     }
+
     shared_except "locked" {
         bind "Alt p" { TogglePaneInGroup; }
         bind "Alt Shift p" { ToggleGroupMarking; }
