@@ -153,8 +153,8 @@ keybinds clear-defaults=true {
         bind "Ctrl Alt l" { MoveFocusOrTab "right"; }
 
         bind "Ctrl Alt left" { GoToPreviousTab; }
-        bind "Ctrl Alt down" { MoveFocus "down"; }
-        bind "Ctrl Alt up" { MoveFocus "up"; }
+        bind "Ctrl Alt up" { Resize "Decrease"; }
+        bind "Ctrl Alt down" { Resize "Increase"; }
         bind "Ctrl Alt right" { GoToNextTab; }
 
         bind "Ctrl Alt H" { GoToPreviousTab; }
@@ -163,7 +163,8 @@ keybinds clear-defaults=true {
         bind "Ctrl Alt o" { MoveTab "right"; }
         bind "Ctrl Alt i" { MoveTab "left"; }
 
-        bind "Ctrl Alt n" { NewTab; SwitchToMode "normal"; }
+        // NOTE: Seems to be an open bug; 0 does not clear name input field. Alert me when fixed in Zellij please.
+        bind "Ctrl Alt n" { NewTab; SwitchToMode "renametab"; PaneNameInput 0; }
 
         bind "Ctrl Alt r" { SwitchToMode "renametab"; PaneNameInput 0; }
 
