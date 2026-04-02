@@ -22,7 +22,7 @@ $cmd_duration\
 $line_break\
 $character"""
 
-right_format = """$time${custom.disk_space}"""
+right_format = """$time${custom.tz}${custom.disk_space}"""
 
 # ─────────────────────────────────────────────────────────────
 # CORE MODULES
@@ -122,6 +122,13 @@ disabled = true # Enable when needed: disabled = false
 # CUSTOM MODULES
 # ─────────────────────────────────────────────────────────────
 
+# Show the UTC timezone offset, shortened
+[custom.tz]
+when = true
+command = "date +%z | sed -E 's/^([+-][0-9]{2}).*/\\1/'"
+format = '[$output]($style) '
+style = 'dimmed white'
+
 # Work vs personal indicator (adjust grep pattern to your work domain)
 [custom.gitmail]
 command = "git config user.email | grep -qi 'astrazeneca\\|work' && echo '💊' || echo '🏴‍☠️'"
@@ -148,7 +155,7 @@ style = 'bold red'
 
 [time]
 disabled = false
-format = '[$time]($style) '
+format = '[$time]($style)'
 style = 'dimmed white'
 time_format = 'W%V %a %d %H:%M'
 
