@@ -1,0 +1,16 @@
+# ripgrep defaults — loaded via RIPGREP_CONFIG_PATH
+# See README.md § "Search tools (fd / rg)" for rationale.
+
+# Include hidden files/dirs (e.g. .editorconfig, .env, .github/)
+--hidden
+
+# Don't honour .gitignore — too restrictive inside git repos
+--no-ignore-vcs
+
+# Skip common noise directories
+--glob=!node_modules
+--glob=!dist
+--glob=!.git
+--glob=!target
+--glob=!__pycache__
+--glob=!.cache
