@@ -6,6 +6,12 @@
 - On interrupt: stop immediately, commit partial work, then reassess
 - After any file edit, re-read before editing again (stale context kills diffs)
 
+## Environment
+
+Primary terminal stack: **Ghostty + fish + zellij**.
+Fish is the first-class shell — all interactive config lives under `home/.config/fish/`.
+`rc.common` / `rc.bash` / `rc.zsh` exist for POSIX/bash compat but are secondary.
+
 ## Ownership
 
 - `setup/` — setup scripts; each file is one concern (packages, python, node, etc.)
@@ -13,7 +19,9 @@
 - `home/` — homeshick-managed dotfiles (symlinked into `~`)
 - `home/.config/nvim/` — LazyVim configuration
 - `home/.config/fish/` — fish shell config and functions
+- `home/.config/fish/conf.d/` — auto-sourced fish snippets (env vars, aliases per tool)
 - `home/.config/ghostty/` — Ghostty terminal config + shaders
+- `home/.config/rg/config` — ripgrep defaults (loaded via RIPGREP_CONFIG_PATH)
 - `rc.common`, `rc.bash`, `rc.zsh` — shell init; `rc.common` is the shared core
 - `getaround.sh` — shell framework (EDITOR, keybindings, helpers)
 - `aliases`, `functions` — shell aliases and functions
