@@ -131,7 +131,7 @@ style = 'dimmed white'
 
 # Work vs personal indicator (adjust grep pattern to your work domain)
 [custom.gitmail]
-command = "git config user.email | grep -qi 'astrazeneca\\|work' && echo '💊' || echo '🏴‍☠️'"
+command = "git config user.email | grep -qi 'astrazeneca\\|work' && echo '💊' || echo '💩'"
 when = "git rev-parse --is-inside-work-tree 2>/dev/null"
 format = '[$output]($style) '
 style = 'bold'
