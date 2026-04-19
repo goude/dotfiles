@@ -15,10 +15,14 @@ git config --global diff.tool vimdiff
 git config --global merge.tool vimdiff
 #git config --global difftool.prompt false
 
+# Unset, so that defaults are used
 git config --global --unset http.sslVerify
 git config --global --unset http.sslCAinfo
 
 git config --global core.excludesfile ~/.gitignore
+
+# Set default branch to avoid initializing master repos for older git installs
+git config --global init.defaultBranch main
 
 # aliases
 #git config --global alias.undo-commit 'reset --soft HEAD^'
