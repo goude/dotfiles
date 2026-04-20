@@ -1,34 +1,120 @@
-#!/bin/bash
-echo "Setting up default global git configuration."
+#!/usr/bin/env bash
+set -euo pipefail
 
-if [[ -f "$HOME/.gitconfig" ]]; then
-  rm "$HOME/.gitconfig"
+# Target XDG location. git auto-discovers this since 1.7.12.
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/git"
+config="$config_dir/config"
+mkdir -p "$config_dir"
+
+echo "Setting up git config at $config"
+
+# Back up anything in the way (both ~/.gitconfig and any existing XDG config).
+backup_dir="${XDG_STATE_HOME:-$HOME/.local/state}/git"
+stamp="$(date +%Y%m%d-%H%M%S)"
+for existing in "$HOME/.gitconfig" "$config"; do
+  if [[ -f "$existing" ]]; then
+    mkdir -p "$backup_dir"
+    backup="$backup_dir/$(basename "$existing").bak.$stamp"
+    mv "$existing" "$backup"
+    echo "Backed up $existing → $backup"
+  fi
+done
+
+# Legacy ~/.gitconfig wins over XDG if both exist — we removed it above, so XDG now takes over.
+# All subsequent `git config -f "$config"` calls write to the XDG location.
+
+cfg() { git config -f "$config" "$@"; }
+
+# --- Identity ---
+cfg user.name  'Daniel Goude'
+cfg user.email 'daniel@goude.se'
+
+# --- Core behaviour ---
+cfg init.defaultBranch main
+cfg push.default            simple
+cfg push.autoSetupRemote    true
+cfg pull.rebase             true
+cfg rebase.autoStash        true
+cfg rebase.updateRefs       true
+cfg fetch.prune             true
+cfg fetch.pruneTags         true
+cfg merge.conflictStyle     zdiff3
+
+# --- Safety ---
+cfg transfer.fsckObjects    true
+cfg fetch.fsckObjects       true
+cfg receive.fsckObjects     true
+
+# --- Diff / merge quality of life ---
+cfg diff.algorithm          histogram
+cfg diff.colorMoved         zebra
+cfg diff.mnemonicPrefix     true
+cfg diff.renames            copies
+cfg merge.tool  vimdiff
+cfg diff.tool   vimdiff
+
+# --- Log / blame ---
+cfg log.date                iso
+cfg blame.coloring          repeatedLines
+cfg blame.ignoreRevsFile    .git-blame-ignore-revs
+
+# --- Rerere ---
+cfg rerere.enabled          true
+cfg rerere.autoUpdate       true
+
+# --- Commits / tags ---
+cfg commit.verbose          true
+cfg tag.sort                version:refname
+cfg branch.sort             -committerdate
+
+# --- Help / UX ---
+cfg help.autocorrect        prompt
+cfg column.ui               auto
+
+# --- Global ignore: XDG-native path, git auto-discovers it ---
+# Location: $XDG_CONFIG_HOME/git/ignore — no config key needed, git finds it.
+# Migrate ~/.gitignore if it exists and the XDG file doesn't.
+xdg_ignore="$config_dir/ignore"
+if [[ -f "$HOME/.gitignore" && ! -f "$xdg_ignore" ]]; then
+  mv "$HOME/.gitignore" "$xdg_ignore"
+  echo "Moved ~/.gitignore → $xdg_ignore"
 fi
 
-git config --global user.name 'Daniel Goude'
-git config --global user.email 'daniel@goude.se'
-git config --global push.default simple
-git config --global pull.rebase false
+# --- Delta pager ---
+if command -v delta >/dev/null 2>&1; then
+  cfg core.pager                'delta'
+  cfg interactive.diffFilter    'delta --color-only'
+  cfg delta.navigate            true
+  cfg delta.side-by-side        true
+  cfg delta.line-numbers        true
+  cfg delta.syntax-theme        'Monokai Extended'
+  cfg delta.hyperlinks          true
+else
+  echo "Note: \`delta\` not found — skipping delta pager config. Install via 'cargo install git-delta' or 'brew install git-delta'."
+fi
 
-# diffs
-git config --global diff.tool vimdiff
-git config --global merge.tool vimdiff
-#git config --global difftool.prompt false
+# --- Commit signing (SSH-based) ---
+SIGNING_KEY="$HOME/.ssh/id_ed25519.pub"
+if [[ -f "$SIGNING_KEY" ]]; then
+  cfg commit.gpgsign       true
+  cfg tag.gpgsign          true
+  cfg gpg.format           ssh
+  cfg user.signingkey      "$SIGNING_KEY"
+  # cfg gpg.ssh.allowedSignersFile "${XDG_CONFIG_HOME:-$HOME/.config}/git/allowed_signers"
+  echo "Commit signing enabled with $SIGNING_KEY"
+  echo "  → Register this key as a *signing key* at https://github.com/settings/ssh/new (Key type: Signing Key)"
+else
+  echo "Note: $SIGNING_KEY not found — skipping commit signing. Generate with 'ssh-keygen -t ed25519'."
+fi
 
-# Unset, so that defaults are used
-git config --global --unset http.sslVerify
-git config --global --unset http.sslCAinfo
+# --- Aliases ---
+cfg alias.undo      'reset --soft HEAD^'
+cfg alias.amend     'commit --amend --no-edit'
+cfg alias.unstage   'restore --staged'
+cfg alias.last      'log -1 HEAD --stat'
+cfg alias.graph     "log --graph --oneline --decorate --all"
+cfg alias.pushf     'push --force-with-lease --force-if-includes'
 
-git config --global core.excludesfile ~/.gitignore
-
-# Set default branch to avoid initializing master repos for older git installs
-git config --global init.defaultBranch main
-
-# aliases
-#git config --global alias.undo-commit 'reset --soft HEAD^'
-
-# diff configuration
-#git config --global icdiff.options '--line-numbers'
-#git-nbdiffdriver config --enable --global
-
-git config --list
+echo
+echo "Done. Config written to $config:"
+cfg --list
