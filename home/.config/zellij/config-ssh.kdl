@@ -1,28 +1,29 @@
 // Remote/SSH zellij config — selected by conf.d/zellij.fish via
 // ZELLIJ_CONFIG_FILE whenever SSH_TTY is set.
 //
-// Design: everything is driven by a tmux-style prefix (Ctrl b) followed by
+// Design: everything is driven by a tmux-style prefix (Ctrl a) followed by
 // plain letters. No Super, no Alt, no Ctrl+letter chords beyond the prefix —
 // those are eaten by an outer (local) zellij session, the macOS side of an
 // SSH hop, or the browser when connecting through a web terminal
-// (ssh.doitpoorly.net / xterm.js). Ctrl b is one of the few chords that
-// survives all three. Ctrl g toggles a locked mode for the rare third level
-// of nesting.
+// (xterm.js). Ctrl a is one of the few chords that
+// survives all three: the local zellij (config.kdl) keeps Ctrl b as its own
+// prefix and passes Ctrl a through untouched. Ctrl g toggles a locked mode
+// for the rare third level of nesting.
 //
 // The local (Ghostty/mac) scheme lives in config.kdl and keeps its
 // Ctrl Super / Ctrl Alt / Alt bindings; the two schemes never collide.
 
 keybinds clear-defaults=true {
     normal {
-        bind "Ctrl b" { SwitchToMode "tmux"; }
+        bind "Ctrl a" { SwitchToMode "tmux"; }
         bind "Ctrl g" { SwitchToMode "locked"; }
     }
     locked {
         bind "Ctrl g" { SwitchToMode "normal"; }
     }
     tmux {
-        // prefix-prefix sends a literal Ctrl b to the focused pane
-        bind "Ctrl b" { Write 2; SwitchToMode "normal"; }
+        // prefix-prefix sends a literal Ctrl a to the focused pane
+        bind "Ctrl a" { Write 1; SwitchToMode "normal"; }
         // panes
         bind "\"" { NewPane "down"; SwitchToMode "normal"; }
         bind "%" { NewPane "right"; SwitchToMode "normal"; }

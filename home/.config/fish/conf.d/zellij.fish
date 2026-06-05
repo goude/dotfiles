@@ -3,8 +3,9 @@
 # An outer (local) zellij consumes Ctrl Super / Ctrl Alt / Alt chords before
 # they reach an SSH pane, and browser terminals (xterm.js) never forward
 # Super and steal most Ctrl+letter chords. So zellij sessions started over
-# SSH use a tmux-style prefix scheme (Ctrl b + plain letters) that survives
-# nesting, SSH, and the browser — see config-ssh.kdl.
+# SSH use a tmux-style prefix scheme (Ctrl a + plain letters) that survives
+# nesting, SSH, and the browser — see config-ssh.kdl. The local config.kdl
+# uses Ctrl b as its prefix and passes Ctrl a through to the ssh pane.
 #
 # SSH_TTY is only set in sshd-spawned sessions; the zellij server inherits
 # the env it was started with, so panes inside a remote session keep using
