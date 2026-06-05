@@ -277,9 +277,14 @@ keybinds clear-defaults=true {
         bind "up" { MoveFocus "up"; SwitchToMode "normal"; }
         bind "right" { MoveFocus "right"; SwitchToMode "normal"; }
         bind "space" { NextSwapLayout; }
+        bind "-" { NewPane "down"; SwitchToMode "normal"; }
+        bind "|" { NewPane "right"; SwitchToMode "normal"; }
+        // tmux-classic fallbacks for the splits above
         bind "\"" { NewPane "down"; SwitchToMode "normal"; }
         bind "%" { NewPane "right"; SwitchToMode "normal"; }
-        bind "," { SwitchToMode "renametab"; }
+        bind "r" { SwitchToMode "renametab"; TabNameInput 0; }
+        bind "R" { SwitchToMode "renamepane"; PaneNameInput 0; }
+        bind "=" { SwitchToMode "resize"; }
         bind "[" { SwitchToMode "scroll"; }
         // prefix-prefix sends a literal Ctrl b to the focused pane
         bind "Ctrl b" { Write 2; SwitchToMode "normal"; }
@@ -288,9 +293,11 @@ keybinds clear-defaults=true {
         bind "j" { MoveFocus "down"; SwitchToMode "normal"; }
         bind "k" { MoveFocus "up"; SwitchToMode "normal"; }
         bind "l" { MoveFocus "right"; SwitchToMode "normal"; }
-        bind "n" { GoToNextTab; SwitchToMode "normal"; }
+        bind "n" { NewTab; SwitchToMode "normal"; }
+        bind "N" { GoToNextTab; SwitchToMode "normal"; }
         bind "o" { FocusNextPane; }
         bind "p" { GoToPreviousTab; SwitchToMode "normal"; }
+        bind "P" { GoToPreviousTab; SwitchToMode "normal"; }
         bind "z" { ToggleFocusFullscreen; SwitchToMode "normal"; }
     }
 }

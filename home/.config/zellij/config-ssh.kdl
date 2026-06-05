@@ -25,6 +25,9 @@ keybinds clear-defaults=true {
         // prefix-prefix sends a literal Ctrl a to the focused pane
         bind "Ctrl a" { Write 1; SwitchToMode "normal"; }
         // panes
+        bind "-" { NewPane "down"; SwitchToMode "normal"; }
+        bind "|" { NewPane "right"; SwitchToMode "normal"; }
+        // tmux-classic fallbacks for the splits above
         bind "\"" { NewPane "down"; SwitchToMode "normal"; }
         bind "%" { NewPane "right"; SwitchToMode "normal"; }
         bind "h" { MoveFocus "left"; SwitchToMode "normal"; }
@@ -40,11 +43,13 @@ keybinds clear-defaults=true {
         bind "z" { ToggleFocusFullscreen; SwitchToMode "normal"; }
         bind "f" { ToggleFloatingPanes; SwitchToMode "normal"; }
         bind "e" { TogglePaneEmbedOrFloating; SwitchToMode "normal"; }
-        bind "$" { SwitchToMode "renamepane"; PaneNameInput 0; }
+        bind "R" { SwitchToMode "renamepane"; PaneNameInput 0; }
         // tabs
-        bind "c" { NewTab; SwitchToMode "normal"; }
-        bind "n" { GoToNextTab; SwitchToMode "normal"; }
+        bind "n" { NewTab; SwitchToMode "normal"; }
+        bind "c" { NewTab; SwitchToMode "normal"; } // tmux-classic fallback
+        bind "N" { GoToNextTab; SwitchToMode "normal"; }
         bind "p" { GoToPreviousTab; SwitchToMode "normal"; }
+        bind "P" { GoToPreviousTab; SwitchToMode "normal"; }
         bind "1" { GoToTab 1; SwitchToMode "normal"; }
         bind "2" { GoToTab 2; SwitchToMode "normal"; }
         bind "3" { GoToTab 3; SwitchToMode "normal"; }
@@ -54,14 +59,14 @@ keybinds clear-defaults=true {
         bind "7" { GoToTab 7; SwitchToMode "normal"; }
         bind "8" { GoToTab 8; SwitchToMode "normal"; }
         bind "9" { GoToTab 9; SwitchToMode "normal"; }
-        bind "," { SwitchToMode "renametab"; TabNameInput 0; }
+        bind "r" { SwitchToMode "renametab"; TabNameInput 0; }
         bind "tab" { ToggleTab; }
         bind "X" { CloseTab; SwitchToMode "normal"; }
         // layout / modes / session
         bind "space" { NextSwapLayout; }
         bind "[" { SwitchToMode "scroll"; }
         bind "/" { SwitchToMode "entersearch"; SearchInput 0; }
-        bind "r" { SwitchToMode "resize"; }
+        bind "=" { SwitchToMode "resize"; }
         bind "d" { Detach; }
         bind "w" {
             LaunchOrFocusPlugin "session-manager" {
