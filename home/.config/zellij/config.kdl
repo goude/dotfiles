@@ -182,7 +182,10 @@ keybinds clear-defaults=true {
         bind "Ctrl Super o" { SwitchToMode "session"; }
     }
     shared_except "locked" "scroll" "search" "tmux" {
-        bind "Ctrl b" { SwitchToMode "tmux"; }
+        // Ctrl a, not Ctrl b: remote zellij sessions (config-ssh.kdl) use a
+        // Ctrl b prefix, so the local session must let Ctrl b pass through
+        // to the ssh pane untouched.
+        bind "Ctrl a" { SwitchToMode "tmux"; }
     }
     shared_except "locked" "scroll" "entersearch" "renametab" "renamepane" "prompt" "tmux" {
         bind "Ctrl Super s" { SwitchToMode "scroll"; }
@@ -278,7 +281,8 @@ keybinds clear-defaults=true {
         bind "%" { NewPane "right"; SwitchToMode "normal"; }
         bind "," { SwitchToMode "renametab"; }
         bind "[" { SwitchToMode "scroll"; }
-        bind "Ctrl b" { Write 2; SwitchToMode "normal"; }
+        // prefix-prefix sends a literal Ctrl a to the focused pane
+        bind "Ctrl a" { Write 1; SwitchToMode "normal"; }
         bind "c" { NewTab; SwitchToMode "normal"; }
         bind "h" { MoveFocus "left"; SwitchToMode "normal"; }
         bind "j" { MoveFocus "down"; SwitchToMode "normal"; }
