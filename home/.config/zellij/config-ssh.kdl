@@ -150,5 +150,7 @@ keybinds clear-defaults=true {
 theme "gruvbox-dark"
 default_shell "fish"
 pane_frames false
-copy_command "cop"
+// copy_command intentionally unset over SSH: on a headless box there is no
+// local clipboard sink, so let zellij fall back to its default OSC 52, which
+// relays both selection-copies and inner-app OSC 52 out to the host terminal.
 show_startup_tips false
