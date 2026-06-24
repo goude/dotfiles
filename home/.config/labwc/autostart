@@ -1,6 +1,7 @@
 # Repair X cookie keyed to a stale hostname (raspberrypi -> laszlo) so
 # Xwayland/X11 apps (e.g. rpi-imager) can authenticate. See script header.
 ~/bin/fix-xauth-hostname &
-~/bin/swww-daemon &
+# Start swww AND set a wallpaper (the daemon alone leaves the screen black).
+~/bin/wallpaper-init &
 ~/repos/Waybar/build/waybar &
 (cd ~/repos/keyflow && just run &)

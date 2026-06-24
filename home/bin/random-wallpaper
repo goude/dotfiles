@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Random wallpaper setter using swww
+
+# Configuration
+WALLPAPER_DIR="$HOME/wallpapers"
+
+# Verify the folder exists
+if [ ! -d "$WALLPAPER_DIR" ]; then
+  echo "Error: $WALLPAPER_DIR does not exist."
+  exit 1
+fi
+
+# Pick a random file (non-recursive)
+file=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f | shuf -n 1)
+
+if [ -z "$file" ]; then
+  echo "No image files found in $WALLPAPER_DIR."
+  exit 1
+fi
+
+echo "Setting wallpaper: $file"
+notify-send "Setting wallpaper: $file"
+
+# Record the choice so wallpaper-init restores it on the next session start.
+swww img "$file" && printf '%s\n' "$file" >"$HOME/.cache/wallpaper-last"
