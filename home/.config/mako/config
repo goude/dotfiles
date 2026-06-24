@@ -16,15 +16,18 @@ width=360
 margin=10,10,10,10
 padding=10,12
 
-# Dark, subtle, semi-transparent
-background-color=#1e1e1ECC
-text-color=#ECEFF4FF
+# Colours matched to the waybar bar. mako can't read CSS variables, so these
+# hex values MIRROR the shared palette in ~/.config/theme/colors.css — keep
+# them in sync. (bg #1a1b26, text #c6d0f5, accent #99d1db, border #ffffff1a,
+# red #e78284, green #a6d189, subtext #babbf1.)
+background-color=#1a1b26F2
+text-color=#c6d0f5FF
 border-size=1
-border-color=#00000066
-border-radius=12
+border-color=#ffffff1a
+border-radius=8
 
-# Font
-font=Inter 10
+# Font — matched to the bar
+font=Hack Nerd Font 10
 
 # Icons
 icons=1
@@ -33,7 +36,7 @@ icon-location=left
 icon-border-radius=8
 
 # Progress bar color (drawn over bg so it shows on translucent bg)
-progress-color=over #A3BE8CFF
+progress-color=over #a6d189FF
 
 # Formatting
 # %s = summary (title), %b = body, %g = group size
@@ -42,11 +45,11 @@ format=<b>%s</b>\n%b
 
 # Urgency-specific tweaks
 [urgency=critical]
-border-color=#BF616AFF
-background-color=#3B1E22E6
+border-color=#e78284FF
+background-color=#2a1820F2
 default-timeout=8000
 
 [urgency=low]
-background-color=#1B1D1EEF
-text-color=#C0C5CEFF
+background-color=#14151fEF
+text-color=#babbf1FF
 

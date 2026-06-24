@@ -73,14 +73,14 @@
     <!-- Menu font matched to the waybar bar (Hack Nerd Font). -->
     <font place="MenuHeader">
       <name>Hack Nerd Font</name>
-      <size>10</size>
+      <size>9</size>
       <weight>Medium</weight>
       <slant>Normal</slant>
     </font>
 
     <font place="MenuItem">
       <name>Hack Nerd Font</name>
-      <size>10</size>
+      <size>9</size>
       <weight>Regular</weight>
       <slant>Normal</slant>
     </font>
