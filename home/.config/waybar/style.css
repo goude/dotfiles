@@ -19,43 +19,55 @@
   font-weight: 500;
 }
 
-/* --- Left Modules (Individual, Fully Rounded Blocks - With Horizontal Spacing & Simple Hover) --- */
+/* ===================================================================
+   Individual rounded blocks (left cluster + tray + clock + pomodoro)
+   =================================================================== */
 #workspaces,
 #custom-uptime,
+#cpu,
+#memory,
+#temperature,
 #disk,
-#cpu {
+#tray,
+#custom-clock,
+#custom-pomodoro {
   background-color: @bg;
   padding: 0.3rem 0.7rem;
-  margin: 5px 0px; /* 5px top/bottom margin, 0px left/right (base for individual control) */
-  border-radius: 6px; /* These modules are always rounded */
+  margin: 5px 0px;
+  border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   min-width: 0;
   border: none;
-  /* Transition for background-color and color only */
   transition:
     background-color 0.2s ease-in-out,
     color 0.2s ease-in-out;
 }
 
+#custom-uptime:hover,
+#cpu:hover,
+#memory:hover,
+#temperature:hover,
+#disk:hover,
+#tray:hover {
+  background-color: @bg_hover; /* Brighter highlight */
+}
+
 #workspaces {
   padding: 2px;
   margin-left: 7px; /* Margin from the far left edge */
-  margin-right: 5px; /* Spacing after the workspaces module */
+  margin-right: 5px;
 }
 
-#custom-uptime {
-  margin-right: 5px; /* Spacing after the uptime module */
-}
-
-/* Simple Hover effects for individual left modules - BRIGHTER COLOR */
-#custom-uptime:hover,
-#cpu:hover {
-  background-color: @bg_hover; /* Brighter highlight */
+#custom-uptime,
+#cpu,
+#memory,
+#temperature {
+  margin-right: 5px; /* Spacing between left modules */
 }
 
 #workspaces button {
   color: @subtext;
-  border-radius: 5px; /* Workspaces buttons are always rounded */
+  border-radius: 5px;
   padding: 0.3rem 0.6rem;
   background: transparent;
   transition: all 0.2s ease-in-out;
@@ -70,72 +82,55 @@
 }
 
 #workspaces button:hover {
-  background: @bg_hover; /* Reference bright hover color */
+  background: @bg_hover;
   color: @text;
 }
 
-/* --- Center Module (Individual, Fully Rounded Block - With Simple Hover) --- */
-#clock {
-  background-color: @bg;
-  padding: 0.3rem 0.7rem;
-  margin: 5px 0px;
-  border-radius: 6px; /* This module is always rounded */
+/* --- Clock (far right, standalone) — starship-style W26 Wed 24 23:08+02 --- */
+#custom-clock {
+  color: @accent;
+  font-weight: 500;
+  margin-left: 5px;
+  margin-right: 7px;
   box-shadow: 0 1px 3px alpha(@accent, 0.2);
-  min-width: 0;
-  border: none;
-  transition:
-    background-color 0.2s ease-in-out,
-    color 0.2s ease-in-out;
 }
 
-/* Simple Hover effect for clock module - BRIGHTER COLOR */
-#clock:hover {
-  background-color: alpha(@accent, 0.1); /* Brighter highlight */
+#custom-clock:hover {
+  background-color: alpha(@accent, 0.1);
 }
 
+/* --- Tray --- */
+#tray {
+  margin-left: 5px;
+  margin-right: 5px;
+  padding: 0.3rem 0.5rem;
+}
+
+#tray menu {
+  background-color: @bg;
+  color: @text;
+}
+
+/* --- Pomodoro (optional; enable in modules-right) --- */
 #custom-pomodoro {
-  background-color: @bg; /* Consistent dark background */
-  padding: 0.3rem 0.7rem; /* Consistent padding with other modules (e.g., cpu, uptime) */
-  margin: 5px 0px; /* 5px top/bottom margin, 0px left/right (base for individual control) */
-  border-radius: 6px; /* Consistent rounded corners with other individual modules */
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Consistent shadow */
-  min-width: 0;
-  border: none;
-  outline: none; /* Ensure no default outline */
-  /* Transition for background-color, color, outline, and box-shadow for smooth effect */
-  transition:
-    background-color 0.2s ease-in-out,
-    color 0.2s ease-in-out,
-    outline 0.2s ease-in-out,
-    box-shadow 0.2s ease-in-out;
-  color: @subtext; /* A calm color, consistent with custom-uptime */
-  font-weight: 600; /* Slightly bolder for the timer, consistent with clock */
+  margin-left: 5px;
+  margin-right: 5px;
+  color: @subtext;
+  font-weight: 600;
 }
 
-/* Positioning and spacing for the custom-pomodoro module */
-#custom-pomodoro {
-  margin-left: 5px; /* Spacing from the previous module (e.g., clock) */
-  margin-right: 5px; /* Spacing before the seamless right bar starts (e.g., bluetooth) */
-}
-
-/* Hover effect for the new pomodoro module (consistent with others + rectangular outline) */
-#custom-pomodoro:hover {
-  background-color: @bg_hover; /* Brighter highlight, consistent with other individual modules */
-  color: @text; /* Text color change on hover, consistent with other individual modules */
-  outline: 1px solid @border; /* Rectangular outline on hover */
-  outline-offset: -1px;
-}
-
-/* --- Highlighted state for Pomodoro module when running (work or break) --- */
 #custom-pomodoro.work,
 #custom-pomodoro.break {
-  color: @accent; /* Text color consistent with active workspaces button */
-  background-color: alpha(@accent, 0.1); /* Background color consistent with active workspaces button */
-  box-shadow: inset 0 0 0 1px alpha(@accent, 0.2); /* Inner shadow for outline effect */
-  outline: none;
+  color: @accent;
+  background-color: alpha(@accent, 0.1);
+  box-shadow: inset 0 0 0 1px alpha(@accent, 0.2);
 }
 
-/* --- Right Modules (Single, Seamless Bar ) --- */
+/* ===================================================================
+   Right seamless bar (idle_inhibitor + bluetooth + network + audio)
+   =================================================================== */
+#custom-showdesktop,
+#idle_inhibitor,
 #bluetooth,
 #pulseaudio,
 #backlight,
@@ -154,6 +149,8 @@
     color 0.2s ease-in-out;
 }
 
+#custom-showdesktop:hover,
+#idle_inhibitor:hover,
 #bluetooth:hover,
 #pulseaudio:hover,
 #backlight:hover,
@@ -163,28 +160,51 @@
   background-color: @bg_hover;
 }
 
-#bluetooth {
+/* Show-desktop button — leftmost, rounded left edge against the screen corner. */
+#custom-showdesktop {
+  color: @subtext;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+
+/* first item of the seamless bar → rounded left edge */
+#idle_inhibitor {
   margin-left: 0px;
   border-top-left-radius: 6px;
   border-bottom-left-radius: 6px;
 }
 
-#battery {
+/* last item of the seamless bar → rounded right edge */
+#pulseaudio {
   border-top-right-radius: 6px;
   border-bottom-right-radius: 6px;
-  margin-right: 7px;
 }
 
+/* --- Per-module colours --- */
 #custom-uptime {
   color: @subtext;
 }
 #cpu {
   color: @text;
 }
+#memory {
+  color: @text;
+}
+#temperature {
+  color: @subtext;
+}
+#temperature.critical {
+  color: @red;
+}
+#disk {
+  color: @text;
+}
 
-#clock {
-  color: @accent;
-  font-weight: 500;
+#idle_inhibitor {
+  color: @subtext;
+}
+#idle_inhibitor.activated {
+  color: @green;
 }
 
 #pulseaudio {
@@ -197,7 +217,6 @@
 #network {
   color: @text;
 }
-
 #network.disconnected {
   color: @red;
 }
@@ -205,6 +224,7 @@
 #custom-lock {
   color: @subtext;
 }
+
 #bluetooth {
   color: #888888;
   font-size: 16px;
@@ -215,6 +235,7 @@
 #bluetooth.connected {
   color: @accent;
 }
+
 #battery {
   color: @accent;
 }

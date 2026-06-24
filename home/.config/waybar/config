@@ -4,20 +4,22 @@
   "position": "bottom",
   //"margin-bottom": -10,
   "spacing": 0,
-  "modules-left": ["custom/lock", "custom/uptime", "cpu", "disk"],
+  "modules-left": ["custom/showdesktop", "custom/lock", "custom/uptime", "cpu", "memory", "temperature", "disk"],
 
   "modules-center": ["ext/workspaces"],
 
   "modules-right": [
     //"custom/pomodoro",
-    "clock",
+    "tray",
+    "idle_inhibitor",
     "bluetooth",
     "network",
     "pulseaudio",
+    "custom/clock",
   ],
 
   "ext/workspaces": {
-    "sort-by-number": true,
+    "sort-by-id": true,
     "on-click": "activate",
     "format": "{name}: {icon}",
     "format-icons": {
@@ -40,11 +42,38 @@
     "tooltip-format-connected": "{device_enumerate}",
   },
 
-  "clock": {
-    "timezone": "Europe/Stockholm",
+  // Clock — script-driven so it matches the starship prompt exactly
+  // (W26 Wed 24 23:08+02). See scripts/clock.sh.
+  "custom/clock": {
+    "exec": "$HOME/.config/waybar/scripts/clock.sh",
+    "format": "{}",
     "tooltip": false,
-    "format": "{:%H:%M · %A, %d}",
-    "interval": 1,
+  },
+
+  "temperature": {
+    "thermal-zone": 0,
+    "interval": 5,
+    "format": "{icon} {temperatureC}°C",
+    "format-critical": " {temperatureC}°C",
+    "format-icons": ["", "", "", "", ""],
+    "critical-threshold": 75,
+    "tooltip": false,
+    "on-click": "kitty -e htop",
+  },
+
+  "idle_inhibitor": {
+    "format": "{icon}",
+    "format-icons": {
+      "activated": "",
+      "deactivated": "",
+    },
+    "tooltip-format-activated": "Staying awake (idle inhibited)",
+    "tooltip-format-deactivated": "Click to keep the screen awake",
+  },
+
+  "tray": {
+    "icon-size": 16,
+    "spacing": 8,
   },
 
   "network": {
@@ -65,12 +94,15 @@
 
   "memory": {
     "interval": 30,
-    "format": "  {used:0.1f}G/{total:0.1f}G",
-    "tooltip-format": "Memory",
+    "format": "  {used:0.1f}G",
+    "tooltip-format": "RAM  {used:0.1f}G / {total:0.1f}G  ({percentage}%)\nSwap {swapUsed:0.1f}G / {swapTotal:0.1f}G",
+    "on-click": "kitty -e htop",
   },
 
   "disk": {
     "interval": 30,
+    "format": "󰋊  {percentage_used}%",
+    "tooltip-format": "{used} used / {total} total  ({percentage_used}%) on {path}",
   },
 
   "custom/uptime": {
@@ -117,6 +149,14 @@
     "tooltip": false,
     "on-click": "gtklock",
     "format": "",
+  },
+
+  // Show-desktop toggle — minimise all windows / restore them (scripts/show-desktop.sh).
+  "custom/showdesktop": {
+    "tooltip": true,
+    "tooltip-format": "Show / hide desktop (minimise all windows)",
+    "on-click": "$HOME/.config/waybar/scripts/show-desktop.sh",
+    "format": "󰍹",
   },
 
   "custom/pomodoro": {
