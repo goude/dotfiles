@@ -1,3 +1,6 @@
+# Repair X cookie keyed to a stale hostname (raspberrypi -> laszlo) so
+# Xwayland/X11 apps (e.g. rpi-imager) can authenticate. See script header.
+~/bin/fix-xauth-hostname &
 ~/bin/swww-daemon &
 ~/repos/Waybar/build/waybar &
 (cd ~/repos/keyflow && just run &)

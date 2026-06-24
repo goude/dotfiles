@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# fix-xauth-hostname — repair an X cookie keyed to a stale hostname.
+#
+# Why this exists:
+#   This host was renamed raspberrypi -> laszlo. labwc/Xwayland writes the
+#   MIT-MAGIC-COOKIE for display :0 into ~/.Xauthority keyed to a hostname, but
+#   X (Xwayland) clients look the cookie up by the *current* gethostname(). When
+#   the keyed name and the live name disagree the lookup misses and every X
+#   client is rejected with:
+#       "Authorization required, but no authorization protocol specified"
+#   This breaks X11-only apps under Wayland — e.g. rpi-imager, whose AppImage
+#   bundles only the Qt xcb plugin and therefore runs via Xwayland.
+#
+# What it does:
+#   Ensures ~/.Xauthority has an entry for the current hostname, reusing the
+#   cookie value Xwayland already generated. Idempotent; safe to run repeatedly
+#   and safe when the cookie is already correct (then it is a no-op re-add).
+#
+# Meant to be launched from the labwc autostart.
+
+set -u
+
+export DISPLAY="${DISPLAY:-:0}"
+display_num="${DISPLAY##*:}"   # "0" from ":0" (or ":0.0")
+display_num="${display_num%%.*}"
+xauthority="${XAUTHORITY:-$HOME/.Xauthority}"
+socket="/tmp/.X11-unix/X${display_num}"
+
+# Wait for the Xwayland listening socket to exist.
+for _ in $(seq 1 40); do
+    [ -S "$socket" ] && break
+    sleep 0.25
+done
+
+# Nudge lazy Xwayland into starting so it writes its auth file. The connection
+# attempt itself triggers the start even though xhost may then fail on auth.
+xhost >/dev/null 2>&1 || true
+
+# Once a cookie for this display exists, re-key it to the current hostname.
+for _ in $(seq 1 40); do
+    cookie=$(xauth -f "$xauthority" list 2>/dev/null \
+        | awk -v d="/unix:${display_num}" '$1 ~ d"$" {print $3; exit}')
+    if [ -n "${cookie:-}" ]; then
+        xauth -f "$xauthority" add "$(hostname)/unix:${display_num}" \
+            MIT-MAGIC-COOKIE-1 "$cookie" 2>/dev/null && exit 0
+    fi
+    sleep 0.25
+done
+
+exit 0
