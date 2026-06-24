@@ -153,6 +153,12 @@
         <command>kitty</command>
       </action>
     </keybind>
+    <!-- Open a 👻 ghostty Terminal (complement to kitty) -->
+    <keybind key="W-S-Return">
+      <action name="Execute">
+        <command>ghostty --gtk-single-instance=true</command>
+      </action>
+    </keybind>
 
     <!-- Window lifecycle -->
 
