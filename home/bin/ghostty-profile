@@ -5,9 +5,14 @@ PROFILE="${1:-default}"
 CFG="$HOME/.config/ghostty"
 OUT="$CFG/config"
 
-cat \
-  "$CFG/base.conf" \
-  "$CFG/overlays/$PROFILE.conf" \
-  >"$OUT"
+# base + selected profile overlay, then an optional machine-local layer.
+# local.conf is NOT tracked in the castle: per-host tweaks (font size for a
+# given display, compositor-specific window-decoration, etc.) live there and
+# win because they come last.
+FILES="$CFG/base.conf $CFG/overlays/$PROFILE.conf"
+[ -f "$CFG/local.conf" ] && FILES="$FILES $CFG/local.conf"
 
-echo "ghostty config → $PROFILE"
+# shellcheck disable=SC2086  # paths are space-free; intentional word splitting
+cat $FILES >"$OUT"
+
+echo "ghostty config → $PROFILE$([ -f "$CFG/local.conf" ] && echo ' (+local)')"
