@@ -168,7 +168,6 @@
 
     <!-- Maximize window -->
     <keybind key="W-M">
-      <action name="Execute"><command>notify-send "W-M Maximize"</command></action>
       <action name="Maximize"/>
     </keybind>
 
@@ -284,16 +283,14 @@
       <action name="GoToDesktop"><to>3</to></action>
     </keybind>
 
-    <!-- Broken binding? PGUP PGDOWN what are they called... -->
+    <!-- Previous / next desktop (PgUp / PgDn). GoToDesktop only accepts
+         left/right/last/etc. - "previous"/"next" were invalid (the old bug). -->
     <keybind key="W-Prior">
-      <action name="Execute"><command>notify-send "desktop previous"</command></action>
-      <action name="GoToDesktop"><to>previous</to></action>
+      <action name="GoToDesktop"><to>left</to></action>
     </keybind>
 
-    <!-- Broken binding? PGUP PGDOWN what are they called... -->
     <keybind key="W-Next">
-      <action name="Execute"><command>notify-send "desktop next"</command></action>
-      <action name="GoToDesktop"><to>next</to></action>
+      <action name="GoToDesktop"><to>right</to></action>
     </keybind>
 
     <keybind key="W-S-1">
@@ -318,16 +315,8 @@
       <action name="Reconfigure"/>
     </keybind>
 
-    <keybind key="W-s">
-      <action name="Execute"><command>notify-send "W-s fired"</command></action>
-    </keybind>
-
-    <keybind key="W-S-s">
-      <action name="Execute"><command>notify-send "W-S-s fired"</command></action>
-    </keybind>
-
+    <!-- App launcher -->
     <keybind key="W-Space">
-      <action name="Execute"><command>notify-send "W-Space fired"</command></action>
       <action name="Execute"><command>wofi --show drun</command></action>
     </keybind>
 
@@ -369,11 +358,14 @@
     </application>
   </applications>
 
-  <!-- ===== WACOM PEN: rocker buttons ===== -->
+  <!-- ===== WACOM PEN ===== -->
+  <!-- This pen (Wacom One) has a SINGLE physical button, which emits Stylus2
+       (BTN_STYLUS2), so it is mapped to right-click. The tip is left-click and
+       is not remappable. labwc tablet maps are flat: there is no way to gate a
+       button on a modifier, so middle-click is not bound on the pen (use the
+       keyboard/mouse for middle-click). -->
   <tablet mouseEmulation="no">
-    <!-- Tip stays left-click; map rocker: upper=Right, lower=Middle -->
-    <map button="Stylus" to="Right"/>
-    <map button="Stylus2" to="Middle"/>
+    <map button="Stylus2" to="Right"/>
   </tablet>
 
 </openbox_config>
