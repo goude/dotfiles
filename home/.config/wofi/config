@@ -1,0 +1,13 @@
+# wofi defaults (the Win+Space launcher). Invoked as `wofi --show drun`
+# from labwc rc.xml; styling lives in style.css (-> ~/.config/theme/colors.css).
+#
+# NOTE: do NOT set `lines` here — combined with a custom style it makes wofi
+# compute a negative height and spam Gtk-CRITICAL. Size with `height` instead.
+show=drun
+prompt=Search
+width=600
+height=440
+insensitive=true
+allow_images=true
+image_size=22
+gtk_dark=true

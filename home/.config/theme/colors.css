@@ -1,0 +1,42 @@
+/*
+ * laszlo unified desktop palette — SINGLE SOURCE OF TRUTH
+ * ======================================================
+ * Derived from the waybar bar theme (Tokyo Night bg + Catppuccin Frappé text).
+ *
+ * GTK-CSS surfaces import this file and use the @-variables below:
+ *   - waybar  (~/.config/waybar/style.css)
+ *   - wofi    (~/.config/wofi/style.css   — the Win+Space launcher)
+ *
+ * labwc CANNOT read CSS variables, so its right-click menu colours are
+ * hard-coded in ~/.config/labwc/themerc-override. If you change a value here,
+ * mirror it there too (that file points back at this one).
+ *
+ * To re-theme the whole desktop: edit the hex values below, then reload
+ * (`pkill -SIGUSR2 waybar` + `labwc --reconfigure`). See
+ * laszlo-client/docs/desktop-environment.md.
+ *
+ * Font (not a colour, set per-file): "Hack Nerd Font", 13px.
+ *
+ *   name        value              role
+ *   bg          #1a1b26            module / surface background
+ *   bg_bar      rgba(0,0,0,0.75)   translucent bar/popup background
+ *   bg_hover    #292a35            hover / highlight background
+ *   text        #c6d0f5            primary text
+ *   subtext     #babbf1            secondary text (lavender)
+ *   accent      #99d1db            accent / active / selection (sky)
+ *   red         #e78284            error / warning
+ *   green       #a6d189            ok / charging
+ *   border      rgba(255,255,255,0.1)  hairline borders
+ *   title_bg    #0a0a0a            active title / menu header background
+ */
+
+@define-color bg        #1a1b26;
+@define-color bg_bar    rgba(0, 0, 0, 0.75);
+@define-color bg_hover  #292a35;
+@define-color text      #c6d0f5;
+@define-color subtext   #babbf1;
+@define-color accent    #99d1db;
+@define-color red       #e78284;
+@define-color green     #a6d189;
+@define-color border    rgba(255, 255, 255, 0.1);
+@define-color title_bg  #0a0a0a;

@@ -1,0 +1,77 @@
+/*
+ * wofi (Win+Space launcher) — matched to the waybar bar theme.
+ * Palette comes from the shared single-source-of-truth file; edit colours
+ * there, not here:  ~/.config/theme/colors.css
+ *
+ * NOTE: don't put `margin` on #input — wofi computes a negative height from it
+ * and spams Gtk-CRITICAL. Space the field via the surrounding boxes instead.
+ */
+
+@import url("/home/mind/.config/theme/colors.css");
+
+* {
+  font-family: "Hack Nerd Font", monospace;
+  font-size: 13px;
+}
+
+/* Outer window — translucent like the bar, hairline border, rounded. */
+window {
+  background-color: @bg_bar;
+  color: @text;
+  border: 1px solid @border;
+  border-radius: 8px;
+}
+
+/* Inset everything from the window edge. */
+#outer-box {
+  margin: 10px;
+}
+
+/* Search field */
+#input {
+  padding: 6px 10px;
+  color: @text;
+  background-color: @bg;
+  border: 1px solid @border;
+  border-radius: 6px;
+  outline: none;
+}
+
+#input image {
+  color: @subtext;
+}
+
+/* Gap between the search field and the results. */
+#inner-box {
+  margin-top: 8px;
+}
+
+#scroll {
+  margin: 0;
+}
+
+/* Result rows */
+#entry {
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
+#entry image {
+  margin-right: 8px;
+}
+
+#text {
+  color: @text;
+  padding: 0 4px;
+}
+
+/* Selected row — accent tint + accent text, same language as the bar's
+   active workspace / clock highlight. */
+#entry:selected {
+  background-color: alpha(@accent, 0.15);
+  outline: none;
+}
+
+#entry:selected #text {
+  color: @accent;
+}

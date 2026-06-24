@@ -23,3 +23,16 @@ window.inactive.title.bg.colorTo: #2a2a2a
 border.width: 1
 border.color: #000000
 
+# ===== Root menu (right-click on desktop) — matched to the waybar bar =====
+# labwc cannot read CSS variables, so these hex values MIRROR the shared
+# palette in ~/.config/theme/colors.css. If you change a colour there,
+# change it here too. (Menu FONT is set in rc.xml: <font place="MenuItem">.)
+menu.items.bg.color:          #1a1b26
+menu.items.text.color:        #c6d0f5
+menu.items.active.bg.color:   #292a35
+menu.items.active.text.color: #99d1db
+menu.title.bg.color:          #0a0a0a
+menu.title.text.color:        #ffffff
+menu.separator.color:         #ffffff20
+menu.separator.width:         1
+
