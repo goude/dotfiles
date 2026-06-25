@@ -5,7 +5,7 @@ function ls --description 'eza/exa wrapper that dims rarely-used dirs in $HOME'
     # Cross-platform on purpose: names that don't exist on a box simply never
     # match. Covers Linux (Templates/Videos) and macOS (Movies/Applications).
     if not set -q dim_dirs
-        set -g dim_dirs Desktop Public Templates Videos Movies Music Pictures Downloads Applications
+        set -g dim_dirs Desktop Public Templates Videos Movies Music Pictures Downloads Applications Documents Bookshelf
     end
     # SGR used for the dim. Default is a fixed dark grey (xterm-256 #444),
     # darker than plain faint. Override per-machine with e.g.
