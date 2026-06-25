@@ -392,6 +392,16 @@
     </application>
   </applications>
 
+  <!-- Force server-side decorations on CSD-preferring apps.
+       Electron/Chromium (Obsidian, etc.) negotiate client-side decoration
+       via xdg-decoration and then draw no labwc-shaped frame, so they map
+       with no titlebar/min-max-close. serverDecoration="yes" over-rules that
+       on first map (close & reopen the app, or relaunch, to apply).
+       identifier = Wayland app_id; confirm new ones with `wlrctl toplevel list`. -->
+  <windowRules>
+    <windowRule identifier="obsidian" serverDecoration="yes" />
+  </windowRules>
+
   <!-- ===== WACOM PEN ===== -->
   <!-- This pen (Wacom One) has a SINGLE physical button, which emits Stylus2
        (BTN_STYLUS2), so it is mapped to right-click. The tip is left-click and
