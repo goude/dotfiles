@@ -317,6 +317,33 @@
       </action>
     </keybind>
 
+    <!-- macOS-style screenshots (Super instead of Cmd).
+         W-S-3 is taken (send-to-desktop), so full-screen-to-file stays on Print. -->
+    <!-- Cmd-Shift-4: drag a region, save to file -->
+    <keybind key="W-S-4">
+      <action name="Execute">
+        <command>sh -c 'grim -g "$(slurp)" "$HOME/Pictures/screenshot-$(date +%F_%H-%M-%S).png"'</command>
+      </action>
+    </keybind>
+    <!-- Cmd-Ctrl-Shift-4: drag a region, copy to clipboard -->
+    <keybind key="W-C-S-4">
+      <action name="Execute">
+        <command>sh -c 'grim -g "$(slurp)" - | wl-copy'</command>
+      </action>
+    </keybind>
+    <!-- Cmd-Shift-5: drag a region, open in swappy to annotate/save -->
+    <keybind key="W-S-5">
+      <action name="Execute">
+        <command>sh -c 'grim -g "$(slurp)" - | swappy -f -'</command>
+      </action>
+    </keybind>
+    <!-- Cmd-Ctrl-Shift-3 analog: full screen to clipboard -->
+    <keybind key="W-C-Print">
+      <action name="Execute">
+        <command>sh -c 'grim - | wl-copy'</command>
+      </action>
+    </keybind>
+
     <!-- Reconfigure labwc -->
     <keybind key="W-Escape">
       <action name="Reconfigure"/>
