@@ -10,8 +10,12 @@ if [ ! -d "$WALLPAPER_DIR" ]; then
   exit 1
 fi
 
-# Pick a random file (non-recursive)
-file=$(find "$WALLPAPER_DIR" -maxdepth 1 -type f | shuf -n 1)
+# Pick a random image from anywhere under the wallpaper dir (recursive, so all
+# the source/author subfolders are included). Hidden dirs (.claude, .remember)
+# are pruned; the extension filter keeps non-images like provenance.json out.
+file=$(find "$WALLPAPER_DIR" -type d -name '.*' -prune -o -type f \
+  \( -iname '*.gif' -o -iname '*.png' -o -iname '*.jpg' \
+     -o -iname '*.jpeg' -o -iname '*.webp' \) -print 2>/dev/null | shuf -n 1)
 
 if [ -z "$file" ]; then
   echo "No image files found in $WALLPAPER_DIR."
