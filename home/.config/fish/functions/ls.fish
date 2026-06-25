@@ -7,10 +7,11 @@ function ls --description 'eza/exa wrapper that dims rarely-used dirs in $HOME'
     if not set -q dim_dirs
         set -g dim_dirs Desktop Public Templates Videos Movies Music Pictures Downloads Applications
     end
-    # SGR used for the dim. Default is faint (theme-adaptive: greys on a dark
-    # theme, fades toward white on a light one). Override with e.g.
-    #   set -U dim_color '38;5;240'   # a fixed mid-grey
-    set -q dim_color; or set -l dim_color 2
+    # SGR used for the dim. Default is a fixed dark grey (xterm-256 #444),
+    # darker than plain faint. Override per-machine with e.g.
+    #   set -U dim_color 2          # theme-adaptive faint
+    #   set -U dim_color '38;5;240' # a lighter mid-grey
+    set -q dim_color; or set -l dim_color '38;5;238'
 
     # --- pick a lister ------------------------------------------------------
     set -l bin
