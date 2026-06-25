@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# homeshick-prune — remove stale (dangling) homeshick symlinks from $HOME.
+#
+# homeshick only ever *adds* symlinks; when a tracked file is renamed, deleted,
+# or moved out of a castle's `home/` tree, the link it left in $HOME keeps
+# pointing at a path that no longer exists. This finds those broken links that
+# point back into ~/.homesick/repos and removes them.
+#
+# Dry-run by default — it only reports. Pass --apply to actually delete.
+#
+# Usage:
+#   homeshick-prune              # list stale links (dry run)
+#   homeshick-prune --apply      # delete them
+#   homeshick-prune -d ~/.config # restrict the search root (repeatable)
+#   homeshick-prune --all-broken # also report broken links NOT owned by homeshick
+#
+set -euo pipefail
+
+CASTLE_ROOT="${HOMESHICK_DIR:-$HOME/.homesick}/repos"
+APPLY=0
+ALL_BROKEN=0
+ROOTS=()
+
+# Directories never worth descending into: huge, machine-local, or VCS internals.
+PRUNE_DIRS=(.git .cache .npm .nvm .cargo .rustup .rbenv .pyenv node_modules
+  .local/share/Trash Library .var snap .docker .terraform.d Bookshelf)
+
+die() {
+  printf 'homeshick-prune: %s\n' "$1" >&2
+  exit 1
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --apply | -f) APPLY=1 ;;
+    --all-broken) ALL_BROKEN=1 ;;
+    -d | --dir)
+      [ $# -ge 2 ] || die "$1 needs an argument"
+      ROOTS+=("$2")
+      shift
+      ;;
+    -h | --help)
+      sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+      exit 0
+      ;;
+    *) die "unknown argument: $1 (try --help)" ;;
+  esac
+  shift
+done
+
+[ ${#ROOTS[@]} -gt 0 ] || ROOTS=("$HOME")
+[ -d "$CASTLE_ROOT" ] || die "no homeshick castle root at $CASTLE_ROOT"
+
+# Build the find prune expression from PRUNE_DIRS.
+prune_expr=()
+for d in "${PRUNE_DIRS[@]}"; do
+  prune_expr+=(-name "$d" -o)
+done
+unset 'prune_expr[${#prune_expr[@]}-1]' # drop trailing -o
+
+stale=()
+while IFS= read -r -d '' link; do
+  # Broken? -e follows the link; false means the target is gone.
+  [ -e "$link" ] && continue
+  target="$(readlink "$link")"
+  if [ "$ALL_BROKEN" -eq 1 ] || [[ "$target" == *"/.homesick/repos/"* ]]; then
+    stale+=("$link")
+  fi
+done < <(
+  find -P "${ROOTS[@]}" -xdev \
+    \( -type d \( "${prune_expr[@]}" \) -prune \) -o \
+    -type l -print0 2>/dev/null
+)
+
+if [ ${#stale[@]} -eq 0 ]; then
+  echo "homeshick-prune: no stale symlinks found."
+  exit 0
+fi
+
+printf 'homeshick-prune: %d stale symlink(s)%s:\n' \
+  "${#stale[@]}" "$([ "$APPLY" -eq 1 ] && echo ' (removing)' || echo ' (dry run)')"
+for link in "${stale[@]}"; do
+  printf '  %s -> %s\n' "${link/#$HOME/\~}" "$(readlink "$link")"
+  if [ "$APPLY" -eq 1 ]; then
+    rm "$link"
+  fi
+done
+
+if [ "$APPLY" -eq 0 ]; then
+  echo "homeshick-prune: re-run with --apply to delete."
+fi
