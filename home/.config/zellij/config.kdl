@@ -304,8 +304,10 @@ keybinds clear-defaults=true {
 
 // Custom theme: gruvbox-dark, but the selected tab ribbon is orange
 // (#d65d0e) instead of green, matching the orange already used by the
-// status bar at the bottom of the screen. Only ribbon_selected differs
-// from the built-in gruvbox-dark; everything else is copied verbatim.
+// status bar at the bottom of the screen. Diverges from built-in
+// gruvbox-dark in two spots: ribbon_selected (orange) and
+// ribbon_unselected background (duller grey, not near-white); the rest
+// is copied verbatim.
 themes {
     gruvbox-dark-orange {
         text_unselected {
@@ -334,7 +336,7 @@ themes {
         }
         ribbon_unselected {
             base 60 56 54
-            background 235 219 178
+            background 168 153 132
             emphasis_0 204 36 29
             emphasis_1 251 241 199
             emphasis_2 69 133 136
