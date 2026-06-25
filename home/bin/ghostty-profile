@@ -1,18 +1,80 @@
 #!/usr/bin/env sh
 set -eu
 
-PROFILE="${1:-default}"
 CFG="$HOME/.config/ghostty"
 OUT="$CFG/config"
+PROG="$(basename "$0")"
 
-# base + selected profile overlay, then an optional machine-local layer.
-# local.conf is NOT tracked in the castle: per-host tweaks (font size for a
-# given display, compositor-specific window-decoration, etc.) live there and
-# win because they come last.
-FILES="$CFG/base.conf $CFG/overlays/$PROFILE.conf"
+list_profiles() {
+    # one per overlays/*.conf; tolerate the glob matching nothing
+    for f in "$CFG"/overlays/*.conf; do
+        [ -e "$f" ] || continue
+        name="$(basename "$f" .conf)"
+        printf '  %s\n' "$name"
+    done
+}
+
+usage() {
+    cat <<EOF
+$PROG — assemble ghostty's config from layered sources.
+
+USAGE
+  $PROG <profile>     apply a profile (writes $OUT)
+  $PROG --list        list available profiles
+  $PROG --help        show this help
+
+HOW IT WORKS
+  ghostty reads only ~/.config/ghostty/config. This script regenerates that
+  file by concatenating, in order:
+
+    base.conf  +  overlays/<profile>.conf  +  local.conf
+
+  base.conf and the overlays are tracked in the castle (shared across hosts);
+  local.conf is NOT tracked — per-host tweaks (font size for a given display,
+  compositor-specific window-decoration, a lighter shader on a weak GPU) live
+  there and win because they come last.
+
+AVAILABLE PROFILES
+$(list_profiles)
+
+AFTER SWITCHING
+  ghostty caches its config, so a new profile does NOT apply to windows that
+  are already open. In a running ghostty window press  Ctrl+Shift+,  to reload
+  (the reload_config binding). Brand-new ghostty processes pick it up on launch.
+EOF
+}
+
+case "${1:-}" in
+    ''|-h|--help|help)
+        usage
+        exit 0
+        ;;
+    -l|--list|list)
+        echo "Available profiles:"
+        list_profiles
+        exit 0
+        ;;
+    -*)
+        printf '%s: unknown option: %s\n\n' "$PROG" "$1" >&2
+        usage >&2
+        exit 2
+        ;;
+esac
+
+PROFILE="$1"
+OVERLAY="$CFG/overlays/$PROFILE.conf"
+if [ ! -f "$OVERLAY" ]; then
+    printf '%s: no such profile: %s\n\nAvailable profiles:\n' "$PROG" "$PROFILE" >&2
+    list_profiles >&2
+    exit 1
+fi
+
+# base + selected profile overlay, then the optional machine-local layer.
+FILES="$CFG/base.conf $OVERLAY"
 [ -f "$CFG/local.conf" ] && FILES="$FILES $CFG/local.conf"
 
 # shellcheck disable=SC2086  # paths are space-free; intentional word splitting
 cat $FILES >"$OUT"
 
 echo "ghostty config → $PROFILE$([ -f "$CFG/local.conf" ] && echo ' (+local)')"
+echo "press Ctrl+Shift+, in a running ghostty to reload (config is cached per-process)"
