@@ -1,16 +1,16 @@
-# Zellij — pick keybinding scheme by context.
+# Zellij — pick the keybinding scheme by terminal capability.
 #
-# An outer (local) zellij consumes Ctrl Super / Ctrl Alt / Alt chords before
-# they reach an SSH pane, and browser terminals (xterm.js) never forward
-# Super and steal most Ctrl+letter chords. So zellij sessions started over
-# SSH use a tmux-style prefix scheme (Ctrl a + plain letters) that survives
-# nesting, SSH, and the browser — see config-ssh.kdl. The local config.kdl
-# uses Ctrl b as its prefix and passes Ctrl a through to the ssh pane.
+# The rich scheme (config.kdl) drives modes with Ctrl+Super and navigation with
+# Ctrl+Alt. Those chords only survive where the Kitty keyboard protocol is live:
+# a local kitty or ghostty terminal on Linux. Everywhere else they break —
+# macOS (Cmd hijacked), Windows (Ctrl+Alt = AltGr), SSH/browser (no Super) — so
+# fall back to the portable Ctrl-a prefix scheme (config-portable.kdl), which is
+# also what an inner session uses when nesting under a local zellij.
 #
-# SSH_TTY is only set in sshd-spawned sessions; the zellij server inherits
-# the env it was started with, so panes inside a remote session keep using
-# the SSH config. Local sessions (Ghostty on the mac, console on Linux) fall
-# through to the default config.kdl with the Ctrl Super / Alt scheme.
-if set -q SSH_TTY
-    set -gx ZELLIJ_CONFIG_FILE ~/.config/zellij/config-ssh.kdl
+# Both branches set ZELLIJ_CONFIG_FILE explicitly, so there is no fragile
+# reliance on the bare-default config path.
+if not set -q SSH_TTY; and test (uname) = Linux; and string match -qr '^xterm-(kitty|ghostty)$' $TERM
+    set -gx ZELLIJ_CONFIG_FILE ~/.config/zellij/config.kdl
+else
+    set -gx ZELLIJ_CONFIG_FILE ~/.config/zellij/config-portable.kdl
 end

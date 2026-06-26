@@ -1,17 +1,14 @@
-// Remote/SSH zellij config — selected by conf.d/zellij.fish via
-// ZELLIJ_CONFIG_FILE whenever SSH_TTY is set.
+// Portable zellij config — the Ctrl-a prefix scheme. Selected by
+// conf.d/zellij.fish everywhere the rich scheme's special keys don't survive:
+// macOS, Windows, SSH, browser (xterm.js), and any non-kitty/ghostty terminal.
+// Also what an inner session uses when nesting under a local zellij.
 //
 // Design: everything is driven by a tmux-style prefix (Ctrl a) followed by
 // plain letters. No Super, no Alt, no Ctrl+letter chords beyond the prefix —
-// those are eaten by an outer (local) zellij session, the macOS side of an
-// SSH hop, or the browser when connecting through a web terminal
-// (xterm.js). Ctrl a is one of the few chords that
-// survives all three: the local zellij (config.kdl) keeps Ctrl b as its own
-// prefix and passes Ctrl a through untouched. Ctrl g toggles a locked mode
-// for the rare third level of nesting.
-//
-// The local (Ghostty/mac) scheme lives in config.kdl and keeps its
-// Ctrl Super / Ctrl Alt / Alt bindings; the two schemes never collide.
+// those get eaten by an outer zellij, the macOS/OS layer, or the browser. Ctrl a
+// survives all of them; the local rich scheme (config.kdl) keeps Ctrl b as its
+// own prefix and passes Ctrl a through untouched. Ctrl g toggles a locked mode
+// for a third level of nesting.
 
 keybinds clear-defaults=true {
     normal {
@@ -43,7 +40,7 @@ keybinds clear-defaults=true {
         bind "z" { ToggleFocusFullscreen; SwitchToMode "normal"; }
         bind "f" { ToggleFloatingPanes; SwitchToMode "normal"; }
         bind "e" { TogglePaneEmbedOrFloating; SwitchToMode "normal"; }
-        bind "R" { SwitchToMode "renamepane"; PaneNameInput 0; }
+        bind "R" { UndoRenamePane; SwitchToMode "renamepane"; PaneNameInput 0; }
         // tabs
         bind "n" { NewTab; SwitchToMode "normal"; }
         bind "c" { NewTab; SwitchToMode "normal"; } // tmux-classic fallback
@@ -59,7 +56,7 @@ keybinds clear-defaults=true {
         bind "7" { GoToTab 7; SwitchToMode "normal"; }
         bind "8" { GoToTab 8; SwitchToMode "normal"; }
         bind "9" { GoToTab 9; SwitchToMode "normal"; }
-        bind "r" { SwitchToMode "renametab"; TabNameInput 0; }
+        bind "r" { UndoRenameTab; SwitchToMode "renametab"; TabNameInput 0; }
         bind "tab" { ToggleTab; }
         bind "X" { CloseTab; SwitchToMode "normal"; }
         // layout / modes / session
@@ -147,10 +144,12 @@ keybinds clear-defaults=true {
 // Options — kept in sync with config.kdl where they matter remotely.
 // ---------------------------------------------------------------------------
 
-theme "gruvbox-dark"
+theme "gruvbox-dark-blue"
 default_shell "fish"
 pane_frames false
 // copy_command intentionally unset over SSH: on a headless box there is no
 // local clipboard sink, so let zellij fall back to its default OSC 52, which
 // relays both selection-copies and inner-app OSC 52 out to the host terminal.
 show_startup_tips false
+// No web client/server — keep zellij terminal-only.
+web_server false
