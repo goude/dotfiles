@@ -10,7 +10,7 @@
 // 100-iteration moving-scanline loop and 3-tap chromatic convergence — stay out.
 
 // ---- feature toggles (1 = on, 0 = compiled out) ----
-#define ENABLE_GLOW      1
+#define ENABLE_GLOW      0
 #define ENABLE_CURSOR    1
 #define ENABLE_SCANLINES 1
 
@@ -23,8 +23,8 @@ const float GLOW_STRENGTH = 0.22;  // how much blurred light to add back
 const float GLOW_RADIUS   = 1.5;   // tap offset in pixels; bigger = softer/blurrier
 
 // ---- cursor trail (sharp rectangle head + triangle wedge, like crt-cursor) ----
-const float CURSOR_GLOW     = 0.60; // trail brightness
-const float CURSOR_FADE     = 6.0;  // higher = trail vanishes faster
+const float CURSOR_GLOW     = 0.40; // trail brightness
+const float CURSOR_FADE     = 7.0;  // higher = trail vanishes faster
 const float CURSOR_EDGE     = 0.010;// glow falloff outside the shape (uv units); smaller = crisper
 const float CURSOR_DURATION = 0.30; // seconds for the wedge to collapse into the block
 const float TRAIL_MIN_DIST  = 0.20; // below this travel, draw just the block (no wedge)
