@@ -1,5 +1,5 @@
 # Bare `zellij` attaches to (or creates) a session named after this host,
-# so the terminal title reads "Zellij (zelda)" instead of a random name like
+# so the terminal title reads "Zellij (myhost)" instead of a random name like
 # "Zellij (charming-capsicum)" — makes nested ssh sessions distinguishable.
 # Any arguments bypass the wrapper, so `zellij -s foo`, `zellij ls`, etc.
 # behave as usual.

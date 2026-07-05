@@ -1,4 +1,4 @@
-// crt-lite.glsl — lightweight single-pass CRT for weak GPUs (e.g. laszlo, the
+// crt-lite.glsl — lightweight single-pass CRT for weak GPUs (e.g. a
 // Pi 500 / VideoCore VII). Keeps the feel of the heavy crt-cursor + crt-monitor
 // stack — discrete scanlines, a cursor trail, and a slight glow — in ONE pass.
 //
