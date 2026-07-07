@@ -1,5 +1,5 @@
 /*
- * laszlo unified desktop palette — SINGLE SOURCE OF TRUTH
+ * unified desktop palette — SINGLE SOURCE OF TRUTH
  * ======================================================
  * Derived from the waybar bar theme (Tokyo Night bg + Catppuccin Frappé text).
  *
@@ -13,7 +13,7 @@
  *
  * To re-theme the whole desktop: edit the hex values below, then reload
  * (`pkill -SIGUSR2 waybar` + `labwc --reconfigure`). See
- * laszlo-client/docs/desktop-environment.md.
+ * the desktop-environment docs in the client config repo.
  *
  * Font (not a colour, set per-file): "Hack Nerd Font", 13px.
  *

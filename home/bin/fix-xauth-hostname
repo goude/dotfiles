@@ -2,7 +2,7 @@
 # fix-xauth-hostname — repair an X cookie keyed to a stale hostname.
 #
 # Why this exists:
-#   This host was renamed raspberrypi -> laszlo. labwc/Xwayland writes the
+#   This host was renamed raspberrypi -> its current hostname. labwc/Xwayland writes the
 #   MIT-MAGIC-COOKIE for display :0 into ~/.Xauthority keyed to a hostname, but
 #   X (Xwayland) clients look the cookie up by the *current* gethostname(). When
 #   the keyed name and the live name disagree the lookup misses and every X

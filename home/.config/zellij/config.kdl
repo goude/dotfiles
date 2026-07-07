@@ -1,5 +1,5 @@
 // Rich local scheme — selected by conf.d/zellij.fish only on a local kitty or
-// ghostty terminal on Linux (laszlo), where the Kitty keyboard protocol makes
+// ghostty terminal on Linux, where the Kitty keyboard protocol makes
 // Ctrl+Super and Ctrl+Alt distinguishable. Every other context (macOS, Windows,
 // SSH, browser, plain tty) falls back to the Ctrl-a prefix in config-portable.kdl.
 //
