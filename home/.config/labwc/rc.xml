@@ -406,6 +406,14 @@
        identifier = Wayland app_id; confirm new ones with `wlrctl toplevel list`. -->
   <windowRules>
     <windowRule identifier="obsidian" serverDecoration="yes" />
+
+    <!-- typst-writer preview: PDF viewers always open main.pdf, so match on
+         title rather than app_id (mupdf-gl sets no app_id at all; see
+         `wlrctl toplevel list` while it's open). Snap the preview window to
+         the right half so it doesn't need manual Super+Right each time. -->
+    <windowRule title="*main.pdf*">
+      <action name="SnapToRegion" region="right-50" />
+    </windowRule>
   </windowRules>
 
   <!-- ===== WACOM PEN ===== -->
