@@ -290,6 +290,11 @@
       <action name="GoToDesktop"><to>3</to></action>
     </keybind>
 
+    <!-- Show desktop 4 -->
+    <keybind key="W-4">
+      <action name="GoToDesktop"><to>4</to></action>
+    </keybind>
+
     <!-- Previous / next desktop (PgUp / PgDn). GoToDesktop only accepts
          left/right/last/etc. - "previous"/"next" were invalid (the old bug). -->
     <keybind key="W-Prior">
@@ -373,12 +378,13 @@
 
   <!-- ===== DESKTOPS ===== -->
   <desktops>
-    <number>3</number>
+    <number>4</number>
     <firstdesk>1</firstdesk>
     <names>
       <name>main</name>
+      <name>secondary</name>
       <name>web</name>
-      <name>aux</name>
+      <name>apps</name>
     </names>
     <popupTime>900</popupTime>
   </desktops>
