@@ -24,7 +24,6 @@ alias gp='git push'
 
 # tmux/zellij aliases
 alias ta='tmux attach || tmux new'
-alias za='zellij attach || zellij'
 alias clp='tmux split-window && exit'
 alias tlk='tmux kill-session -a && tmux kill-server'
 

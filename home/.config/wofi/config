@@ -5,6 +5,9 @@
 # compute a negative height and spam Gtk-CRITICAL. Size with `height` instead.
 show=drun
 prompt=Search
+# sort_order defaults to "default", which already sorts drun entries by
+# launch count from ~/.cache/wofi-drun (most-used first) — confirmed live,
+# no need to set it explicitly.
 width=600
 height=440
 insensitive=true
