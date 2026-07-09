@@ -146,6 +146,10 @@ mtime=$(stat -c %Y "$f" 2>/dev/null) || exit 0
 [ $(( $(date +%s) - mtime )) -lt 1800 ] || exit 0
 jq -r '.session.used_pct | select(. != null) | "󰚩 \(.)%"' "$f" 2>/dev/null
 '''
+# POSIX var=value assignment isn't valid fish syntax — pin the interpreter
+# so this doesn't silently no-op under a fish login shell (starship defaults
+# to running custom commands via $SHELL, not always /bin/sh).
+shell = ["sh"]
 when = true
 format = '[$output]($style) '
 style = 'bold magenta'
