@@ -150,10 +150,12 @@ when = true
 format = '[$output]($style) '
 style = 'bold magenta'
 
-# Disk space on right side - less intrusive
+# Disk space on right side - less intrusive.
+# $HOME rather than a fixed path, so it resolves to the real data
+# filesystem on any box (Linux root, macOS APFS Data volume, etc).
 [custom.disk_space]
-command = "df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); if ($5 > 95) print \"⚠️ \" $5 \"%\"; else print \"💾 \" $5 \"%\"}'"
-when = "df -h /System/Volumes/Data 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); exit !($5 > 90)}'"
+command = "df -h \"$HOME\" 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); if ($5 > 95) print \"⚠️ \" $5 \"%\"; else print \"💾 \" $5 \"%\"}'"
+when = "df -h \"$HOME\" 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); exit !($5 > 90)}'"
 format = ' [$output]($style) '
 style = 'bold green'
 
