@@ -22,7 +22,7 @@ $cmd_duration\
 $line_break\
 $character"""
 
-right_format = """$time${custom.tz}${custom.claude_usage}${custom.claude_usage_stale}${custom.disk_space}"""
+right_format = """${custom.time}${custom.tz}${custom.claude_usage}${custom.claude_usage_stale}${custom.disk_space}"""
 
 # ─────────────────────────────────────────────────────────────
 # CORE MODULES
@@ -122,9 +122,15 @@ disabled = true # Enable when needed: disabled = false
 # CUSTOM MODULES
 # ─────────────────────────────────────────────────────────────
 
+# Right-side modules use cursor save/restore escapes that break down
+# (staircase-stepping typed text) on narrow/mobile SSH clients like
+# Termius; hide the whole right side below this width instead.
+# Shared inline rather than a variable: starship "when" commands run in
+# their own subshell, so a sourced/exported var wouldn't reach them.
+
 # Show the UTC timezone offset, shortened
 [custom.tz]
-when = true
+when = '[ "$(tput cols 2>/dev/null || echo 200)" -ge 80 ]'
 command = "date +%z | sed -E 's/^([+-][0-9]{2}).*/\\1/'"
 format = '[$output]($style) '
 style = 'dimmed white'
@@ -136,38 +142,36 @@ when = "git rev-parse --is-inside-work-tree 2>/dev/null"
 format = '[$output]($style) '
 style = 'bold'
 
-# Claude Code current-session usage %, only if the cache (written by
-# zelda-server's scripts/claude-usage.py) is fresher than 30 minutes.
-# Starship styles are static per module, so "fade with age" is two
-# mutually-exclusive modules on disjoint age windows rather than one.
+# Claude Code current-session usage %, read live from pixoo-server's
+# /surfaces endpoint (the "claude" dial data) instead of a local cache
+# file — any host on the tailnet (e.g. laszlo) gets the same reading for
+# free, no per-machine cache job required. Starship styles are static per
+# module, so "fade with age" is two mutually-exclusive modules on disjoint
+# age windows rather than one. curl is capped at 1s and errors are
+# swallowed so a down/unreachable pixoo-server just blanks the module.
 #
 # POSIX var=value assignment isn't valid fish syntax — pin shell = ["sh"]
 # on both so this doesn't silently no-op under a fish login shell
 # (starship defaults to running custom commands via $SHELL, not /bin/sh).
 [custom.claude_usage]
 command = '''
-f="$HOME/.cache/claude-usage.json"
-[ -f "$f" ] || exit 0
-mtime=$(stat -c %Y "$f" 2>/dev/null) || exit 0
-[ $(( $(date +%s) - mtime )) -lt 300 ] || exit 0
-jq -r '.session.used_pct | select(. != null) | "󰚩 \(.)%"' "$f" 2>/dev/null
+curl -s -m 1 http://zelda:6464/surfaces 2>/dev/null | jq -r '
+  select(.claude.stale == false) | .claude.percent | select(. != null) | "󰚩 \(.)%"
+' 2>/dev/null
 '''
 shell = ["sh"]
-when = true
+when = '[ "$(tput cols 2>/dev/null || echo 200)" -ge 80 ]'
 format = '[$output]($style) '
 style = 'bold magenta'
 
 [custom.claude_usage_stale]
 command = '''
-f="$HOME/.cache/claude-usage.json"
-[ -f "$f" ] || exit 0
-mtime=$(stat -c %Y "$f" 2>/dev/null) || exit 0
-age=$(( $(date +%s) - mtime ))
-[ $age -ge 300 ] && [ $age -lt 1800 ] || exit 0
-jq -r '.session.used_pct | select(. != null) | "󰚩 \(.)%"' "$f" 2>/dev/null
+curl -s -m 1 http://zelda:6464/surfaces 2>/dev/null | jq -r '
+  select(.claude.stale == true) | .claude.percent | select(. != null) | "󰚩 \(.)%"
+' 2>/dev/null
 '''
 shell = ["sh"]
-when = true
+when = '[ "$(tput cols 2>/dev/null || echo 200)" -ge 80 ]'
 format = '[$output]($style) '
 style = 'dimmed magenta'
 
@@ -176,7 +180,7 @@ style = 'dimmed magenta'
 # filesystem on any box (Linux root, macOS APFS Data volume, etc).
 [custom.disk_space]
 command = "df -h \"$HOME\" 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); if ($5 > 95) print \"⚠️ \" $5 \"%\"; else print \"💾 \" $5 \"%\"}'"
-when = "df -h \"$HOME\" 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); exit !($5 > 90)}'"
+when = "[ \"$(tput cols 2>/dev/null || echo 200)\" -ge 80 ] && df -h \"$HOME\" 2>/dev/null | awk 'NR==2 {gsub(/%/,\"\"); exit !($5 > 90)}'"
 format = ' [$output]($style) '
 style = 'bold green'
 
@@ -191,10 +195,13 @@ style = 'bold red'
 # ─────────────────────────────────────────────────────────────
 
 [time]
-disabled = false
-format = '[$time]($style)'
+disabled = true # replaced by custom.time, which can gate on terminal width
+
+[custom.time]
+command = "date '+W%V %a %d %H:%M'"
+when = '[ "$(tput cols 2>/dev/null || echo 200)" -ge 80 ]'
+format = '[$output]($style)'
 style = 'dimmed white'
-time_format = 'W%V %a %d %H:%M'
 
 # ─────────────────────────────────────────────────────────────
 # DISABLED - available if needed
