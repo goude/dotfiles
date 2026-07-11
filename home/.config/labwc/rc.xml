@@ -414,6 +414,13 @@
     <windowRule title="*main.pdf*">
       <action name="SnapToRegion" region="right-50" />
     </windowRule>
+
+    <!-- doithud HUD: launched via `firefox -P doithud --class=doithud`,
+         see goude/doithud README. Snap to the right half so it sits
+         alongside a terminal running Claude Code on the left. -->
+    <windowRule identifier="doithud">
+      <action name="SnapToRegion" region="right-50" />
+    </windowRule>
   </windowRules>
 
   <!-- ===== WACOM PEN ===== -->
