@@ -63,8 +63,8 @@
   "idle_inhibitor": {
     "format": "{icon}",
     "format-icons": {
-      "activated": "",
-      "deactivated": "",
+      "activated": "",
+      "deactivated": "",
     },
     "tooltip-format-activated": "Staying awake (idle inhibited)",
     "tooltip-format-deactivated": "Click to keep the screen awake",
