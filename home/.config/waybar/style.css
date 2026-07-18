@@ -24,6 +24,7 @@
    =================================================================== */
 #workspaces,
 #custom-uptime,
+#cpu_graph,
 #cpu,
 #memory,
 #temperature,
@@ -43,6 +44,7 @@
 }
 
 #custom-uptime:hover,
+#cpu_graph:hover,
 #cpu:hover,
 #memory:hover,
 #temperature:hover,
@@ -57,10 +59,16 @@
 }
 
 #custom-uptime,
+#cpu_graph,
 #cpu,
 #memory,
 #temperature {
   margin-right: 5px; /* Spacing between left modules */
+}
+
+/* CPU graph line colour (module has no text, only the drawn graph) */
+#cpu_graph {
+  color: @accent;
 }
 
 #workspaces button {
@@ -82,6 +90,38 @@
 #workspaces button:hover {
   background: @bg_hover;
   color: @text;
+}
+
+/* --- Taskbar (open-window list, next to workspaces) --- */
+#taskbar {
+  background-color: @bg;
+  padding: 0.2rem;
+  margin: 5px 0px 5px 5px;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#taskbar button {
+  padding: 0.2rem 0.5rem;
+  margin: 0 2px;
+  border-radius: 5px;
+  background: transparent;
+  border: none;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+}
+
+#taskbar button.active {
+  background-color: alpha(@accent, 0.1);
+  box-shadow: inset 0 0 0 1px alpha(@accent, 0.2);
+}
+
+#taskbar button:hover {
+  background: @bg_hover;
+}
+
+#taskbar button.minimized {
+  opacity: 0.5;
 }
 
 /* --- Clock (far right, standalone) — starship-style W26 Wed 24 23:08+02 --- */

@@ -4,9 +4,9 @@
   "position": "bottom",
   //"margin-bottom": -10,
   "spacing": 0,
-  "modules-left": ["custom/showdesktop", "custom/lock", "custom/uptime", "cpu", "memory", "temperature", "disk"],
+  "modules-left": ["custom/showdesktop", "custom/lock", "custom/uptime", "cpu_graph", "cpu", "memory", "temperature", "disk"],
 
-  "modules-center": ["ext/workspaces"],
+  "modules-center": ["ext/workspaces", "wlr/taskbar"],
 
   "modules-right": [
     //"custom/pomodoro",
@@ -81,9 +81,25 @@
 
   "cpu": {
     "interval": 1,
-    "format": "  {icon0}{icon1}{icon2}{icon3} {usage:>2}%",
-    "format-icons": ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"],
+    "format": "  {usage:>2}%",
     "on-click": "kitty -e htop",
+  },
+
+  // Real drawn line graph, replacing the old {icon0-3} block-sparkline hack.
+  "cpu_graph": {
+    "interval": 1,
+    "width": 34,
+    "on-click": "kitty -e htop",
+  },
+
+  // Open-window list — click to focus, middle-click to close.
+  "wlr/taskbar": {
+    "format": "{icon}",
+    "icon-size": 18,
+    "icon-theme": "PiXtrix",
+    "tooltip-format": "{title}",
+    "on-click": "activate",
+    "on-click-middle": "close",
   },
 
   "memory": {
