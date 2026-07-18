@@ -20,7 +20,7 @@
 }
 
 /* ===================================================================
-   Individual rounded blocks (left cluster + tray + clock + pomodoro)
+   Individual rounded blocks (left cluster + clock + pomodoro)
    =================================================================== */
 #workspaces,
 #custom-uptime,
@@ -28,7 +28,6 @@
 #memory,
 #temperature,
 #disk,
-#tray,
 #custom-clock,
 #custom-pomodoro {
   background-color: @bg;
@@ -47,8 +46,7 @@
 #cpu:hover,
 #memory:hover,
 #temperature:hover,
-#disk:hover,
-#tray:hover {
+#disk:hover {
   background-color: @bg_hover; /* Brighter highlight */
 }
 
@@ -97,18 +95,6 @@
 
 #custom-clock:hover {
   background-color: alpha(@accent, 0.1);
-}
-
-/* --- Tray --- */
-#tray {
-  margin-left: 5px;
-  margin-right: 5px;
-  padding: 0.3rem 0.5rem;
-}
-
-#tray menu {
-  background-color: @bg;
-  color: @text;
 }
 
 /* --- Pomodoro (optional; enable in modules-right) --- */

@@ -10,7 +10,6 @@
 
   "modules-right": [
     //"custom/pomodoro",
-    "tray",
     "idle_inhibitor",
     "bluetooth",
     "network",
@@ -69,11 +68,6 @@
     },
     "tooltip-format-activated": "Staying awake (idle inhibited)",
     "tooltip-format-deactivated": "Click to keep the screen awake",
-  },
-
-  "tray": {
-    "icon-size": 16,
-    "spacing": 8,
   },
 
   "network": {
