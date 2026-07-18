@@ -1,0 +1,112 @@
+/*
+ * User-wide GTK4 override — same intent as the GTK3 one (pavucontrol is
+ * GTK4, blueman-manager/nm-connection-editor are GTK3, hence two files).
+ * Keep the two in sync by hand; GTK ships no single override point that
+ * covers both toolkit versions.
+ *
+ * Palette is the shared single source of truth; edit colours there, not here:
+ *   ~/.config/theme/colors.css
+ */
+@import url("/home/mind/.config/theme/colors.css");
+
+/* GTK4's built-in Adwaita stylesheet sets background-color via selectors
+ * (e.g. window.background) that outrank a plain `window { }` rule on CSS
+ * specificity — a universal `*` catch-all is what actually wins here
+ * (verified: `window { background-color: red }` alone did nothing,
+ * `* { background-color: red }` did). Everything below layers on top of it
+ * with real class/state selectors, which do win normally. */
+* {
+  font-family: "Hack Nerd Font", monospace;
+  font-size: 13px;
+  background-color: @bg;
+  color: @text;
+}
+
+headerbar {
+  background-color: @bg;
+  color: @text;
+  border-color: @border;
+  box-shadow: none;
+}
+
+/* Buttons */
+button {
+  background-color: @bg_hover;
+  color: @text;
+  border-color: @border;
+}
+
+button:hover {
+  background-color: alpha(@accent, 0.15);
+}
+
+button:checked,
+button.suggested-action {
+  background-color: alpha(@accent, 0.25);
+  color: @accent;
+}
+
+/* Volume/balance sliders (pavucontrol) */
+scale trough {
+  background-color: @bg_hover;
+  border-color: @border;
+}
+
+scale trough highlight {
+  background-color: @accent;
+}
+
+scale slider {
+  background-color: @text;
+  border-color: @border;
+}
+
+/* Lists/trees (pavucontrol stream list) */
+list,
+listview,
+treeview {
+  background-color: @bg;
+  color: @text;
+}
+
+list row:selected,
+listview > row:selected,
+treeview:selected {
+  background-color: alpha(@accent, 0.2);
+  color: @text;
+}
+
+list row:hover,
+listview > row:hover,
+treeview:hover {
+  background-color: @bg_hover;
+}
+
+/* Progress bars (pavucontrol channel meters) */
+progressbar trough {
+  background-color: @bg_hover;
+}
+
+progressbar progress {
+  background-color: @accent;
+}
+
+/* Notebook tabs (pavucontrol's Playback/Recording/Output/Input/Config tabs) */
+notebook header {
+  background-color: @bg;
+  border-color: @border;
+}
+
+notebook tab {
+  color: @subtext;
+}
+
+notebook tab:checked {
+  color: @accent;
+}
+
+tooltip {
+  background-color: @bg;
+  color: @text;
+  border: 1px solid @border;
+}

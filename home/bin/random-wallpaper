@@ -3,6 +3,8 @@
 
 # Configuration
 WALLPAPER_DIR="$HOME/wallpapers"
+LAST_FILE="$HOME/.cache/wallpaper-last"
+PREV_FILE="$HOME/.cache/wallpaper-previous"
 
 # Verify the folder exists
 if [ ! -d "$WALLPAPER_DIR" ]; then
@@ -25,5 +27,8 @@ fi
 echo "Setting wallpaper: $file"
 notify-send "Setting wallpaper: $file"
 
-# Record the choice so wallpaper-init restores it on the next session start.
-swww img "$file" && printf '%s\n' "$file" >"$HOME/.cache/wallpaper-last"
+# Save the outgoing wallpaper as "previous" (for wallpaper-previous to toggle
+# back to), then record the new choice so wallpaper-init restores it on the
+# next session start.
+[ -f "$LAST_FILE" ] && cp "$LAST_FILE" "$PREV_FILE"
+swww img "$file" && printf '%s\n' "$file" >"$LAST_FILE"

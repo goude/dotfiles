@@ -18,13 +18,36 @@
       </action>
     </item>
 
-    <item label="New Wallpaper">
-      <action name="Execute">
-        <command><![CDATA[
-          ~/bin/random-wallpaper
-        ]]></command>
-      </action>
-    </item>
+    <menu id="wallpaper" label="Wallpaper">
+      <item label="New Wallpaper">
+        <action name="Execute">
+          <command><![CDATA[
+            ~/bin/random-wallpaper
+          ]]></command>
+        </action>
+      </item>
+      <item label="Previous Wallpaper">
+        <action name="Execute">
+          <command><![CDATA[
+            ~/bin/wallpaper-previous
+          ]]></command>
+        </action>
+      </item>
+      <item label="Favorite Current">
+        <action name="Execute">
+          <command><![CDATA[
+            ~/bin/wallpaper-favorite
+          ]]></command>
+        </action>
+      </item>
+      <item label="Hide Current">
+        <action name="Execute">
+          <command><![CDATA[
+            ~/bin/wallpaper-hide
+          ]]></command>
+        </action>
+      </item>
+    </menu>
 
     <separator/>
 

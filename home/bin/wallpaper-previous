@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Swap back to the previously-set wallpaper. Repeated clicks toggle back and
+# forth between the last two, since each swap re-records the outgoing one.
+set -u
+
+LAST_FILE="$HOME/.cache/wallpaper-last"
+PREV_FILE="$HOME/.cache/wallpaper-previous"
+
+if [ ! -f "$PREV_FILE" ]; then
+  notify-send "No previous wallpaper recorded"
+  exit 1
+fi
+
+read -r prev <"$PREV_FILE"
+if [ -z "$prev" ] || [ ! -f "$prev" ]; then
+  notify-send "Previous wallpaper not found: $prev"
+  exit 1
+fi
+
+cur=""
+[ -f "$LAST_FILE" ] && read -r cur <"$LAST_FILE"
+
+if swww img "$prev"; then
+  printf '%s\n' "$prev" >"$LAST_FILE"
+  [ -n "$cur" ] && printf '%s\n' "$cur" >"$PREV_FILE"
+  notify-send "Wallpaper: $(basename "$prev")"
+fi

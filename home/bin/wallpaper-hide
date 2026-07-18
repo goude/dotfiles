@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Hide the currently-set wallpaper (move it out of rotation, into a mirrored
+# .hidden/ subtree so it's still around but never picked by random-wallpaper
+# — the finder already prunes dot-dirs), then pick a new one.
+set -u
+
+WALLPAPER_DIR="$HOME/wallpapers"
+HIDDEN_DIR="$WALLPAPER_DIR/.hidden"
+LAST_FILE="$HOME/.cache/wallpaper-last"
+
+if [ ! -f "$LAST_FILE" ]; then
+  notify-send "No current wallpaper recorded"
+  exit 1
+fi
+
+read -r file <"$LAST_FILE"
+if [ -z "$file" ] || [ ! -f "$file" ]; then
+  notify-send "Current wallpaper not found: $file"
+  exit 1
+fi
+
+rel="${file#"$WALLPAPER_DIR"/}"
+dest="$HIDDEN_DIR/$rel"
+mkdir -p "$(dirname "$dest")"
+mv "$file" "$dest"
+notify-send "Hidden: $(basename "$file")"
+
+exec "$HOME/bin/random-wallpaper"
