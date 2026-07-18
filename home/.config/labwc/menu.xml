@@ -107,20 +107,24 @@
           ]]></command>
         </action>
       </item>
-      <item label="Reboot">
-        <action name="Execute">
-          <command><![CDATA[
-            systemctl reboot
-          ]]></command>
-        </action>
-      </item>
-      <item label="Power Off">
-        <action name="Execute">
-          <command><![CDATA[
-            systemctl poweroff
-          ]]></command>
-        </action>
-      </item>
+      <menu id="reboot-confirm" label="Reboot &#8594;">
+        <item label="Confirm Reboot">
+          <action name="Execute">
+            <command><![CDATA[
+              systemctl reboot
+            ]]></command>
+          </action>
+        </item>
+      </menu>
+      <menu id="poweroff-confirm" label="Power Off &#8594;">
+        <item label="Confirm Power Off">
+          <action name="Execute">
+            <command><![CDATA[
+              systemctl poweroff
+            ]]></command>
+          </action>
+        </item>
+      </menu>
     </menu>
 
   </menu>
